@@ -33,8 +33,9 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          # the downloaded IDEs are huge: do not save them into the Actions cache
-          cache-read-only: true
+          # The Gradle home holds several extracted IDEs (many GB): restoring/saving it
+          # from the Actions cache fills the runner disk, so the cache is disabled.
+          cache-disabled: true
 
       - name: Make gradlew executable
         run: chmod +x gradlew
