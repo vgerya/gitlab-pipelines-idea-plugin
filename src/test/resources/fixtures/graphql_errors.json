@@ -1,0 +1,13 @@
+{
+  "errors": [
+    {
+      "message": "Field 'reviewRequestedMergeRequests' doesn't exist on type 'UserCore'",
+      "locations": [
+        {
+          "line": 4,
+          "column": 5
+        }
+      ]
+    }
+  ]
+}

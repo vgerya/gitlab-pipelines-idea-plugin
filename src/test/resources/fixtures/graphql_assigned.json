@@ -1,0 +1,69 @@
+{
+  "data": {
+    "currentUser": {
+      "username": "jdoe",
+      "assignedMergeRequests": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        },
+        "nodes": [
+          {
+            "id": "gid://gitlab/MergeRequest/9002",
+            "iid": "12",
+            "title": "Add <b>feature</b> & more",
+            "webUrl": "https://gitlab.example.com/group/sub/beta/-/merge_requests/12",
+            "draft": false,
+            "sourceBranch": "feature/x",
+            "updatedAt": "2024-05-02T09:00:00Z",
+            "project": {
+              "fullPath": "group/sub/beta"
+            },
+            "headPipeline": {
+              "id": "gid://gitlab/Ci::Pipeline/502",
+              "iid": "32",
+              "status": "RUNNING",
+              "path": "/group/sub/beta/-/pipelines/502",
+              "updatedAt": "2024-05-02T09:01:00Z",
+              "finishedAt": null,
+              "detailedStatus": {
+                "text": "running",
+                "label": "running",
+                "group": "running",
+                "icon": "status_running",
+                "detailsPath": "/group/sub/beta/-/pipelines/502"
+              }
+            }
+          },
+          {
+            "id": "gid://gitlab/MergeRequest/9004",
+            "iid": "14",
+            "title": "Bump deps",
+            "webUrl": "https://gitlab.example.com/group/sub/beta/-/merge_requests/14",
+            "draft": false,
+            "sourceBranch": "deps",
+            "updatedAt": "2024-05-03T12:00:00Z",
+            "project": {
+              "fullPath": "group/sub/beta"
+            },
+            "headPipeline": {
+              "id": "gid://gitlab/Ci::Pipeline/504",
+              "iid": "34",
+              "status": "SUCCESS",
+              "path": "/group/sub/beta/-/pipelines/504",
+              "updatedAt": "2024-05-03T12:10:00Z",
+              "finishedAt": "2024-05-03T12:10:00Z",
+              "detailedStatus": {
+                "text": "success",
+                "label": "passed",
+                "group": "success",
+                "icon": "status_success",
+                "detailsPath": "/group/sub/beta/-/pipelines/504"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

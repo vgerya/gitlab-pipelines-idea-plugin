@@ -1,0 +1,16 @@
+{
+  "id": 9003,
+  "iid": 13,
+  "project_id": 7,
+  "title": "WIP: refactor",
+  "state": "opened",
+  "web_url": "https://gitlab.example.com/group/alpha/-/merge_requests/13",
+  "source_branch": "refactor",
+  "updated_at": "2024-04-20T08:00:00.000Z",
+  "work_in_progress": true,
+  "references": {
+    "short": "!13",
+    "full": "group/alpha!13"
+  },
+  "head_pipeline": null
+}

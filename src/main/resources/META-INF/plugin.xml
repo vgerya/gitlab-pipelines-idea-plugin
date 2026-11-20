@@ -1,0 +1,56 @@
+<idea-plugin>
+    <id>com.github.vgerya.gitlabpipelines</id>
+    <name>GitLab MR Pipelines</name>
+    <vendor>vgerya</vendor>
+
+    <description><![CDATA[
+    Shows pipeline statuses of your open GitLab merge requests (gitlab.com or self-hosted) right in the IDE:
+    a tool window, a status bar widget and balloon notifications when a pipeline fails, succeeds or is canceled.
+    <br/><br/>
+    Статусы пайплайнов ваших открытых merge request'ов GitLab прямо в IDE:
+    окно инструментов, виджет в строке состояния и уведомления.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <resource-bundle>messages.MyBundle</resource-bundle>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationService
+                serviceImplementation="com.github.vgerya.gitlabpipelines.plugin.settings.GitLabSettings"/>
+
+        <applicationConfigurable
+                parentId="tools"
+                id="gitlab.mr.pipelines"
+                instance="com.github.vgerya.gitlabpipelines.plugin.settings.GitLabConfigurable"
+                bundle="messages.MyBundle"
+                key="settings.displayName"/>
+
+        <toolWindow
+                id="GitLab Pipelines"
+                anchor="right"
+                secondary="false"
+                icon="/icons/gitlabPipelines.svg"
+                factoryClass="com.github.vgerya.gitlabpipelines.plugin.ui.PipelinesToolWindowFactory"/>
+
+        <statusBarWidgetFactory
+                id="GitLabPipelinesWidget"
+                order="after positionWidget"
+                implementation="com.github.vgerya.gitlabpipelines.plugin.ui.PipelinesStatusBarWidgetFactory"/>
+
+        <notificationGroup
+                id="GitLab MR Pipelines"
+                displayType="BALLOON"
+                bundle="messages.MyBundle"
+                key="notification.group"/>
+
+        <postStartupActivity
+                implementation="com.github.vgerya.gitlabpipelines.plugin.service.StartupActivity"/>
+    </extensions>
+
+    <actions>
+        <action id="GitLabPipelines.Refresh"
+                class="com.github.vgerya.gitlabpipelines.plugin.ui.actions.RefreshAction"
+                icon="AllIcons.Actions.Refresh"/>
+    </actions>
+</idea-plugin>

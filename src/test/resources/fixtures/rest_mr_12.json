@@ -1,0 +1,32 @@
+{
+  "id": 9002,
+  "iid": 12,
+  "project_id": 8,
+  "title": "Add <b>feature</b> & more",
+  "state": "opened",
+  "web_url": "https://gitlab.example.com/group/sub/beta/-/merge_requests/12",
+  "source_branch": "feature/x",
+  "updated_at": "2024-05-02T09:00:00.000Z",
+  "draft": false,
+  "work_in_progress": false,
+  "references": {
+    "short": "!12",
+    "full": "group/sub/beta!12"
+  },
+  "head_pipeline": {
+    "id": 502,
+    "iid": 32,
+    "project_id": 8,
+    "status": "running",
+    "ref": "feature/x",
+    "web_url": "https://gitlab.example.com/group/sub/beta/-/pipelines/502",
+    "updated_at": "2024-05-02T09:01:00.000Z",
+    "finished_at": null,
+    "detailed_status": {
+      "icon": "status_running",
+      "text": "running",
+      "label": "running",
+      "group": "running"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "id": 9005,
+  "iid": 15,
+  "project_id": 7,
+  "title": "Review me",
+  "state": "opened",
+  "web_url": "https://gitlab.example.com/group/alpha/-/merge_requests/15",
+  "source_branch": "review",
+  "updated_at": "2024-05-04T07:00:00.000Z",
+  "draft": false,
+  "work_in_progress": false,
+  "references": {
+    "short": "!15",
+    "full": "group/alpha!15"
+  },
+  "head_pipeline": {
+    "id": 505,
+    "iid": 35,
+    "project_id": 7,
+    "status": "manual",
+    "ref": "review",
+    "web_url": "https://gitlab.example.com/group/alpha/-/pipelines/505",
+    "updated_at": "2024-05-04T07:02:00.000Z",
+    "finished_at": null,
+    "detailed_status": {
+      "icon": "status_manual",
+      "text": "manual",
+      "label": "manual action",
+      "group": "manual"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "id": 9001,
+  "iid": 11,
+  "project_id": 7,
+  "title": "Fix login",
+  "state": "opened",
+  "web_url": "https://gitlab.example.com/group/alpha/-/merge_requests/11",
+  "source_branch": "fix-login",
+  "updated_at": "2024-05-01T10:00:00.000Z",
+  "draft": false,
+  "work_in_progress": false,
+  "references": {
+    "short": "!11",
+    "full": "group/alpha!11"
+  },
+  "head_pipeline": {
+    "id": 501,
+    "iid": 31,
+    "project_id": 7,
+    "status": "failed",
+    "ref": "fix-login",
+    "web_url": "https://gitlab.example.com/group/alpha/-/pipelines/501",
+    "updated_at": "2024-05-01T10:05:00.000Z",
+    "finished_at": "2024-05-01T10:05:00.000Z",
+    "detailed_status": {
+      "icon": "status_failed",
+      "text": "failed",
+      "label": "failed",
+      "group": "failed"
+    }
+  }
+}

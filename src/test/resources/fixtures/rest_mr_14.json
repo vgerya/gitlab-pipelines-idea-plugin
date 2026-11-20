@@ -1,0 +1,28 @@
+{
+  "id": 9004,
+  "iid": 14,
+  "project_id": 8,
+  "title": "Bump deps",
+  "state": "opened",
+  "web_url": "https://gitlab.example.com/group/sub/beta/-/merge_requests/14",
+  "source_branch": "deps",
+  "updated_at": "2024-05-03T12:00:00.000Z",
+  "draft": false,
+  "work_in_progress": false,
+  "head_pipeline": {
+    "id": 504,
+    "iid": 34,
+    "project_id": 8,
+    "status": "success",
+    "ref": "deps",
+    "web_url": "https://gitlab.example.com/group/sub/beta/-/pipelines/504",
+    "updated_at": "2024-05-03T12:10:00.000Z",
+    "finished_at": "2024-05-03T12:10:00.000Z",
+    "detailed_status": {
+      "icon": "status_success",
+      "text": "success",
+      "label": "passed",
+      "group": "success"
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "data": {
+    "currentUser": {
+      "username": "jdoe",
+      "authoredMergeRequests": {
+        "pageInfo": {
+          "hasNextPage": true,
+          "endCursor": "cursor-1"
+        },
+        "nodes": [
+          {
+            "id": "gid://gitlab/MergeRequest/9001",
+            "iid": "11",
+            "title": "Fix login",
+            "webUrl": "https://gitlab.example.com/group/alpha/-/merge_requests/11",
+            "draft": false,
+            "sourceBranch": "fix-login",
+            "updatedAt": "2024-05-01T10:00:00Z",
+            "project": {
+              "fullPath": "group/alpha"
+            },
+            "headPipeline": {
+              "id": "gid://gitlab/Ci::Pipeline/501",
+              "iid": "31",
+              "status": "FAILED",
+              "path": "/group/alpha/-/pipelines/501",
+              "updatedAt": "2024-05-01T10:05:00Z",
+              "finishedAt": "2024-05-01T10:05:00Z",
+              "detailedStatus": {
+                "text": "failed",
+                "label": "failed",
+                "group": "failed",
+                "icon": "status_failed",
+                "detailsPath": "/group/alpha/-/pipelines/501"
+              }
+            }
+          },
+          {
+            "id": "gid://gitlab/MergeRequest/9002",
+            "iid": "12",
+            "title": "Add <b>feature</b> & more",
+            "webUrl": "https://gitlab.example.com/group/sub/beta/-/merge_requests/12",
+            "draft": false,
+            "sourceBranch": "feature/x",
+            "updatedAt": "2024-05-02T09:00:00Z",
+            "project": {
+              "fullPath": "group/sub/beta"
+            },
+            "headPipeline": {
+              "id": "gid://gitlab/Ci::Pipeline/502",
+              "iid": "32",
+              "status": "RUNNING",
+              "path": "/group/sub/beta/-/pipelines/502",
+              "updatedAt": "2024-05-02T09:01:00Z",
+              "finishedAt": null,
+              "detailedStatus": {
+                "text": "running",
+                "label": "running",
+                "group": "running",
+                "icon": "status_running",
+                "detailsPath": "/group/sub/beta/-/pipelines/502"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

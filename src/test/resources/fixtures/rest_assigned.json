@@ -1,0 +1,30 @@
+[
+  {
+    "id": 9002,
+    "iid": 12,
+    "project_id": 8,
+    "title": "Add <b>feature</b> & more",
+    "state": "opened",
+    "web_url": "https://gitlab.example.com/group/sub/beta/-/merge_requests/12",
+    "source_branch": "feature/x",
+    "updated_at": "2024-05-02T09:00:00.000Z",
+    "draft": false,
+    "work_in_progress": false,
+    "references": {
+      "short": "!12",
+      "full": "group/sub/beta!12"
+    }
+  },
+  {
+    "id": 9004,
+    "iid": 14,
+    "project_id": 8,
+    "title": "Bump deps",
+    "state": "opened",
+    "web_url": "https://gitlab.example.com/group/sub/beta/-/merge_requests/14",
+    "source_branch": "deps",
+    "updated_at": "2024-05-03T12:00:00.000Z",
+    "draft": false,
+    "work_in_progress": false
+  }
+]

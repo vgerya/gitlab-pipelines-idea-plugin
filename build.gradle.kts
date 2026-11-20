@@ -1,0 +1,86 @@
+plugins {
+    id("java")
+    id("org.jetbrains.kotlin.jvm") version "2.0.21"
+    id("org.jetbrains.intellij.platform") version "2.1.0"
+}
+
+group = providers.gradleProperty("pluginGroup").get()
+version = providers.gradleProperty("pluginVersion").get()
+
+kotlin {
+    jvmToolchain(21)
+    compilerOptions {
+        // IntelliJ 2024.2 bundles Kotlin stdlib 1.9.x: do not use newer stdlib APIs.
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9)
+    }
+}
+
+repositories {
+    mavenCentral()
+    intellijPlatform {
+        defaultRepositories()
+    }
+}
+
+dependencies {
+    intellijPlatform {
+        intellijIdeaCommunity(providers.gradleProperty("platformVersion"))
+        pluginVerifier()
+        zipSigner()
+        instrumentationTools()
+    }
+
+    // Gson and the Kotlin stdlib are bundled with the platform (compile-only for main code),
+    // but the core unit tests run on a plain JVM classpath.
+    compileOnly("com.google.code.gson:gson:2.10.1")
+    testImplementation("com.google.code.gson:gson:2.10.1")
+    testImplementation(kotlin("stdlib", "2.0.21"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.3")
+    // The IDE test runtime classpath (added by the IntelliJ Platform Gradle Plugin) contains
+    // listeners that reference JUnit 4 classes; without it JUnit 5 tests may fail with
+    // NoClassDefFoundError: junit/framework/TestCase (IJPL-159134).
+    testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+intellijPlatform {
+    // No searchable options to index and it needs a headless IDE run: skip it (less CI fragility).
+    buildSearchableOptions = false
+    // No GUI forms and no Java sources: bytecode instrumentation is unnecessary.
+    instrumentCode = false
+
+    pluginConfiguration {
+        id = "com.github.vgerya.gitlabpipelines"
+        name = providers.gradleProperty("pluginName")
+        version = providers.gradleProperty("pluginVersion")
+
+        ideaVersion {
+            sinceBuild = "242"
+            untilBuild = provider { null }
+        }
+    }
+
+    pluginVerification {
+        ides {
+            recommended()
+        }
+    }
+}
+
+tasks {
+    test {
+        useJUnitPlatform()
+        testLogging {
+            events("passed", "skipped", "failed")
+            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        }
+    }
+
+    withType<JavaCompile>().configureEach {
+        options.encoding = "UTF-8"
+    }
+
+    processResources {
+        filteringCharset = "UTF-8"
+    }
+}

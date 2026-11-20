@@ -1,0 +1,42 @@
+{
+  "data": {
+    "currentUser": {
+      "username": "jdoe",
+      "reviewRequestedMergeRequests": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        },
+        "nodes": [
+          {
+            "id": "gid://gitlab/MergeRequest/9005",
+            "iid": "15",
+            "title": "Review me",
+            "webUrl": "https://gitlab.example.com/group/alpha/-/merge_requests/15",
+            "draft": false,
+            "sourceBranch": "review",
+            "updatedAt": "2024-05-04T07:00:00Z",
+            "project": {
+              "fullPath": "group/alpha"
+            },
+            "headPipeline": {
+              "id": "gid://gitlab/Ci::Pipeline/505",
+              "iid": "35",
+              "status": "MANUAL",
+              "path": "/group/alpha/-/pipelines/505",
+              "updatedAt": "2024-05-04T07:02:00Z",
+              "finishedAt": null,
+              "detailedStatus": {
+                "text": "manual",
+                "label": "manual action",
+                "group": "manual",
+                "icon": "status_manual",
+                "detailsPath": "/group/alpha/-/pipelines/505"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

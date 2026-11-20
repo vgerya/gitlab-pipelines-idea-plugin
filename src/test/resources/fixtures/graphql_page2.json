@@ -1,0 +1,28 @@
+{
+  "data": {
+    "currentUser": {
+      "username": "jdoe",
+      "authoredMergeRequests": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": "cursor-2"
+        },
+        "nodes": [
+          {
+            "id": "gid://gitlab/MergeRequest/9003",
+            "iid": "13",
+            "title": "WIP: refactor",
+            "webUrl": "https://gitlab.example.com/group/alpha/-/merge_requests/13",
+            "draft": true,
+            "sourceBranch": "refactor",
+            "updatedAt": "2024-04-20T08:00:00Z",
+            "project": {
+              "fullPath": "group/alpha"
+            },
+            "headPipeline": null
+          }
+        ]
+      }
+    }
+  }
+}
