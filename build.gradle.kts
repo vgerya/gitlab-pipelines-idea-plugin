@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+
 plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.0.21"
@@ -62,7 +64,12 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            recommended()
+            // recommended() resolves IC 2025.3+, which no longer exists (IDEA became a single
+            // unified distribution in 2025.3), so list the targets explicitly:
+            // the lowest supported build, the last Community release and the unified IDEA.
+            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.2.4")
+            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2025.2")
+            ide(IntelliJPlatformType.IntellijIdeaUltimate, "2025.3")
         }
     }
 }
