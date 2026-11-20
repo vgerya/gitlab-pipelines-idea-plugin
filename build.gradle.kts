@@ -67,7 +67,9 @@ intellijPlatform {
             // recommended() resolves IC 2025.3+, which no longer exists (IDEA became a single
             // unified distribution in 2025.3), so list the targets explicitly:
             // the lowest supported build, the last Community release and the unified IDEA.
-            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.2.4")
+            // 2024.2.5 rather than 2024.2.4: an ide() entry equal to the compile platform is
+            // silently dropped by the Gradle plugin, which would leave the 242 branch unverified.
+            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.2.5")
             ide(IntelliJPlatformType.IntellijIdeaCommunity, "2025.2")
             ide(IntelliJPlatformType.IntellijIdeaUltimate, "2025.3")
         }

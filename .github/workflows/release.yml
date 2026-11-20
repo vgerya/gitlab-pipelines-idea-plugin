@@ -13,7 +13,12 @@ jobs:
     steps:
       - name: Free disk space (plugin verifier downloads several IDEs)
         run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift \
+            /usr/local/share/powershell /usr/local/share/chromium /opt/microsoft /opt/google \
+            /usr/local/julia* /usr/share/miniconda || true
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
           df -h /
 
       - name: Checkout
@@ -27,6 +32,9 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          # the downloaded IDEs are huge: do not save them into the Actions cache
+          cache-read-only: true
 
       - name: Make gradlew executable
         run: chmod +x gradlew
