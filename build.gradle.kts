@@ -65,11 +65,12 @@ intellijPlatform {
     pluginVerification {
         ides {
             // recommended() resolves IC 2025.3+, which no longer exists (IDEA became a single
-            // unified distribution in 2025.3), so list the targets explicitly:
-            // the last Community release, the unified IDEA and the lowest supported build.
-            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2025.2")
-            ide(IntelliJPlatformType.IntellijIdeaUltimate, "2025.3")
-            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.2.4")
+            // unified distribution in 2025.3), so list the targets explicitly.
+            // Only one version per product type: with IntelliJ Platform Gradle Plugin 2.1.0
+            // several versions of the same product are conflict-resolved to the newest one.
+            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.2.4") // 242, lowest supported
+            ide(IntelliJPlatformType.WebStorm, "2025.2")                // 252
+            ide(IntelliJPlatformType.IntellijIdeaUltimate, "2025.3")    // 253, unified IDEA
         }
     }
 }
