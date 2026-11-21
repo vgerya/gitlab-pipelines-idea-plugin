@@ -229,4 +229,50 @@ object Json {
             finishedAt = parseInstant(p.str("finished_at")),
         )
     }
+
+    // ---------------------------------------------------------------- recent pipelines
+
+    /**
+     * Parses the GraphQL `project(fullPath) { mergeRequests(iids) { nodes { id pipelines { nodes } } } }`
+     * response into MR global id → pipelines. `project: null` (no access / renamed) gives an empty map.
+     */
+    fun parseGraphQlMrPipelines(body: String, baseUrl: String): Map<String, List<Pipeline>> {
+        val root = parseObject(body)
+        val errors = root.arr("errors")
+        if (errors != null && errors.size() > 0) {
+            val first = errors[0].takeIf { it.isJsonObject }?.asJsonObject?.str("message")
+            throw GitLabException(ErrorKind.GRAPHQL, message = "GraphQL error: ${first ?: "unknown"}")
+        }
+        val data = root.obj("data") ?: throw badResponse("GraphQL response without data")
+        val project = data.obj("project") ?: return emptyMap()
+        val nodes = project.obj("mergeRequests")?.arr("nodes") ?: throw badResponse("GraphQL response without mergeRequests")
+        val result = LinkedHashMap<String, List<Pipeline>>()
+        for (n in nodes) {
+            if (!n.isJsonObject) continue
+            val mr = n.asJsonObject
+            val id = mr.str("id") ?: continue
+            val pipelines = mr.obj("pipelines")?.arr("nodes")?.mapNotNull { p ->
+                if (!p.isJsonObject) return@mapNotNull null
+                val o = p.asJsonObject
+                parseGraphQlPipeline(o, baseUrl)?.copy(
+                    ref = o.str("ref"),
+                    sha = o.str("sha"),
+                    createdAt = parseInstant(o.str("createdAt")),
+                )
+            }.orEmpty()
+            result[id] = pipelines
+        }
+        return result
+    }
+
+    /** Parses `GET /projects/:id/merge_requests/:iid/pipelines` (array of basic pipeline objects). */
+    fun parseRestPipelineList(body: String): List<Pipeline> = parseArray(body).mapNotNull { e ->
+        if (!e.isJsonObject) return@mapNotNull null
+        val o = e.asJsonObject
+        parseRestPipeline(o)?.copy(
+            ref = o.str("ref"),
+            sha = o.str("sha"),
+            createdAt = parseInstant(o.str("created_at")),
+        )
+    }
 }

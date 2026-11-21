@@ -45,6 +45,10 @@ data class Pipeline(
     val webUrl: String?,
     val updatedAt: Instant?,
     val finishedAt: Instant?,
+    /** Only filled for the "recent pipelines" list (not for head pipelines). */
+    val ref: String? = null,
+    val sha: String? = null,
+    val createdAt: Instant? = null,
 )
 
 data class MergeRequest(
@@ -71,4 +75,7 @@ object GlobalIds {
 
     fun mergeRequest(id: Long): String = MERGE_REQUEST_PREFIX + id
     fun pipeline(id: Long): String = PIPELINE_PREFIX + id
+
+    /** Numeric tail of a global id (`gid://gitlab/Ci::Pipeline/42` → 42), or `null`. */
+    fun numericId(gid: String?): Long? = gid?.substringAfterLast('/')?.trim()?.toLongOrNull()
 }

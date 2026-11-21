@@ -5,6 +5,7 @@ import com.github.vgerya.gitlabpipelines.core.ErrorKind
 import com.github.vgerya.gitlabpipelines.core.GitLabClient
 import com.github.vgerya.gitlabpipelines.core.GitLabException
 import com.github.vgerya.gitlabpipelines.core.MergeRequest
+import com.github.vgerya.gitlabpipelines.core.Pipeline
 import com.github.vgerya.gitlabpipelines.core.PipelineEvent
 import com.github.vgerya.gitlabpipelines.core.PipelineStatus
 import com.github.vgerya.gitlabpipelines.core.Seen
@@ -14,6 +15,7 @@ import com.github.vgerya.gitlabpipelines.core.UrlUtil
 import com.github.vgerya.gitlabpipelines.plugin.MyBundle
 import com.github.vgerya.gitlabpipelines.plugin.settings.GitLabSettings
 import com.github.vgerya.gitlabpipelines.plugin.settings.TokenStore
+import com.github.vgerya.gitlabpipelines.plugin.settings.ViewSettings
 import com.github.vgerya.gitlabpipelines.plugin.ui.StatusIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.notification.NotificationAction
@@ -44,6 +46,8 @@ data class Snapshot(
     val lastSuccess: Instant?,
     val error: GitLabException?,
     val loading: Boolean,
+    /** Recent pipelines per MR key; filled only while «Показывать все пайплайны» is on. */
+    val pipelines: Map<String, List<Pipeline>> = emptyMap(),
 ) {
     companion object {
         val INITIAL = Snapshot(emptyList(), Counts.EMPTY, null, null, false)
@@ -141,16 +145,19 @@ class PipelinesService(private val cs: CoroutineScope) {
             if (!manual && backoff != null && pollStart.isBefore(backoff)) return
 
             publish(snapshot.copy(loading = true))
-            val result = GitLabClient(baseUrl, token, IdeTransport.create())
-                .fetchMergeRequests(settings.includeAssigned, settings.includeReview)
+            val client = GitLabClient(baseUrl, token, IdeTransport.create())
+            val result = client.fetchMergeRequests(settings.includeAssigned, settings.includeReview)
             if (gen != generation.get()) return // settings changed meanwhile; a new poll is queued
 
             val visible = Summary.sort(Summary.filter(result.mrs, settings.showDrafts))
+            // Notifications are computed from head pipelines only; recent pipelines are display-only.
+            val pipelines = if (ViewSettings.getInstance().showAllPipelines) loadRecentPipelines(client, visible) else emptyMap()
+            if (gen != generation.get()) return
             val diff = StatusDiff.diff(seen, visible, settings.notifyPrefs(), lastPollAt)
             seen = diff.next
             lastPollAt = pollStart
             backoffUntil = null
-            publish(Snapshot(visible, Summary.compute(visible), Instant.now(), null, false))
+            publish(Snapshot(visible, Summary.compute(visible), Instant.now(), null, false, pipelines))
             if (diff.events.isNotEmpty()) notify(diff.events)
         } catch (e: CancellationException) {
             throw e
@@ -174,6 +181,17 @@ class PipelinesService(private val cs: CoroutineScope) {
                     loading = false,
                 ),
             )
+        }
+    }
+
+    /** Recent pipelines are optional: on failure keep the previous ones and do not fail the poll. */
+    private fun loadRecentPipelines(client: GitLabClient, mrs: List<MergeRequest>): Map<String, List<Pipeline>> {
+        return try {
+            client.fetchRecentPipelines(mrs)
+        } catch (e: GitLabException) {
+            LOG.info("Loading recent pipelines failed: kind=${e.kind}, httpStatus=${e.httpStatus}")
+            val keys = mrs.mapTo(HashSet()) { it.key }
+            snapshot.pipelines.filterKeys { it in keys }
         }
     }
 

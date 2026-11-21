@@ -43,6 +43,89 @@ class GitLabClient(baseUrl: String, token: String, private val transport: HttpTr
         }
     }
 
+    /**
+     * Recent pipelines (newest first, at most [limit]) of each MR, keyed by MR key. Separate from
+     * [fetchMergeRequests] so that the regular poll stays cheap; GraphQL (one query per project and
+     * up to [PIPELINES_IIDS_PER_QUERY] MRs) with REST fallback (one request per MR).
+     */
+    fun fetchRecentPipelines(mrs: List<MergeRequest>, limit: Int = RECENT_PIPELINES): Map<String, List<Pipeline>> {
+        if (mrs.isEmpty()) return emptyMap()
+        return try {
+            fetchRecentPipelinesGraphQl(mrs, limit)
+        } catch (e: GitLabException) {
+            if (e.kind in FALLBACK_KINDS) fetchRecentPipelinesRest(mrs, limit) else throw e
+        }
+    }
+
+    internal fun fetchRecentPipelinesGraphQl(mrs: List<MergeRequest>, limit: Int): Map<String, List<Pipeline>> {
+        val result = LinkedHashMap<String, List<Pipeline>>()
+        val byProject = mrs.filter { it.projectPath.isNotBlank() }.groupBy { it.projectPath }
+        for ((projectPath, list) in byProject) {
+            for (chunk in list.chunked(PIPELINES_IIDS_PER_QUERY)) {
+                val variables = JsonObject()
+                variables.addProperty("fullPath", projectPath)
+                val iids = com.google.gson.JsonArray()
+                chunk.forEach { iids.add(it.iid.toString()) }
+                variables.add("iids", iids)
+                variables.addProperty("first", limit)
+                val root = JsonObject()
+                root.addProperty("query", RECENT_PIPELINES_QUERY)
+                root.add("variables", variables)
+                val response = send(
+                    HttpRequestSpec(
+                        method = "POST",
+                        url = "$baseUrl/api/graphql",
+                        headers = mapOf(
+                            "Authorization" to "Bearer $token",
+                            "Content-Type" to "application/json",
+                            "Accept" to "application/json",
+                        ),
+                        body = root.toString(),
+                    ),
+                )
+                Json.parseGraphQlMrPipelines(response.body, baseUrl).forEach { (key, pipelines) ->
+                    result[key] = pipelines.take(limit)
+                }
+            }
+        }
+        return result
+    }
+
+    internal fun fetchRecentPipelinesRest(mrs: List<MergeRequest>, limit: Int): Map<String, List<Pipeline>> {
+        val targets = mrs.filter { it.projectPath.isNotBlank() }
+        if (targets.isEmpty()) return emptyMap()
+        val pool = Executors.newFixedThreadPool(minOf(MAX_PARALLEL_DETAILS, targets.size), DaemonThreadFactory)
+        try {
+            val futures = targets.map { mr ->
+                mr.key to pool.submit<List<Pipeline>> {
+                    val project = UrlUtil.encodeQueryParam(mr.projectPath)
+                    val url = "$baseUrl/api/v4/projects/$project/merge_requests/${mr.iid}/pipelines?per_page=$limit"
+                    try {
+                        Json.parseRestPipelineList(restGet(url).body).take(limit)
+                    } catch (e: GitLabException) {
+                        if (e.kind == ErrorKind.BAD_RESPONSE && e.httpStatus == 404) emptyList() else throw e
+                    }
+                }
+            }
+            val result = LinkedHashMap<String, List<Pipeline>>()
+            for ((key, f) in futures) {
+                result[key] = try {
+                    f.get()
+                } catch (e: ExecutionException) {
+                    val cause = e.cause
+                    if (cause is GitLabException) throw cause
+                    throw GitLabException(ErrorKind.BAD_RESPONSE, message = "Failed to load pipelines", cause = cause)
+                } catch (e: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    throw GitLabException(ErrorKind.NETWORK, message = "Interrupted", cause = e)
+                }
+            }
+            return result
+        } finally {
+            pool.shutdownNow()
+        }
+    }
+
     // ------------------------------------------------------------------ GraphQL
 
     internal fun fetchGraphQl(includeAssigned: Boolean, includeReview: Boolean): List<MergeRequest> {
@@ -206,6 +289,26 @@ class GitLabClient(baseUrl: String, token: String, private val transport: HttpTr
         const val MAX_PAGES = 5
         const val MAX_PARALLEL_DETAILS = 4
         const val DEFAULT_RETRY_AFTER_SEC = 60L
+        const val RECENT_PIPELINES = 10
+        const val PIPELINES_IIDS_PER_QUERY = 20
+
+        val RECENT_PIPELINES_QUERY: String = """
+            query(${'$'}fullPath: ID!, ${'$'}iids: [String!], ${'$'}first: Int) {
+              project(fullPath: ${'$'}fullPath) {
+                mergeRequests(iids: ${'$'}iids, first: ${PIPELINES_IIDS_PER_QUERY}) {
+                  nodes {
+                    id iid
+                    pipelines(first: ${'$'}first) {
+                      nodes {
+                        id iid status path ref sha createdAt updatedAt finishedAt
+                        detailedStatus { text label }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+        """.trimIndent()
 
         private val FALLBACK_KINDS = setOf(ErrorKind.GRAPHQL, ErrorKind.BAD_RESPONSE, ErrorKind.SERVER)
 

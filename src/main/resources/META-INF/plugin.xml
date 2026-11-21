@@ -12,8 +12,17 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
+    <!-- Optional: git remotes for the «Только текущий проект» filter; without it .git/config is parsed. -->
+    <depends optional="true" config-file="gitlab-pipelines-git.xml">Git4Idea</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
+
+    <extensionPoints>
+        <extensionPoint
+                qualifiedName="com.github.vgerya.gitlabpipelines.remotesProvider"
+                interface="com.github.vgerya.gitlabpipelines.plugin.remotes.ProjectRemotesProvider"
+                dynamic="true"/>
+    </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">
         <applicationService

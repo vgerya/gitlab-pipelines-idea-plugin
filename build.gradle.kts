@@ -27,6 +27,8 @@ repositories {
 dependencies {
     intellijPlatform {
         intellijIdeaCommunity(providers.gradleProperty("platformVersion"))
+        // Optional dependency (see plugin.xml / gitlab-pipelines-git.xml): git remotes of the project.
+        bundledPlugin("Git4Idea")
         pluginVerifier()
         zipSigner()
         instrumentationTools()

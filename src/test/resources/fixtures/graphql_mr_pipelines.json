@@ -1,0 +1,47 @@
+{
+  "data": {
+    "project": {
+      "mergeRequests": {
+        "nodes": [
+          {
+            "id": "gid://gitlab/MergeRequest/9001",
+            "iid": "11",
+            "pipelines": {
+              "nodes": [
+                {
+                  "id": "gid://gitlab/Ci::Pipeline/501",
+                  "iid": "31",
+                  "status": "FAILED",
+                  "path": "/group/alpha/-/pipelines/501",
+                  "ref": "fix-login",
+                  "sha": "abc123",
+                  "createdAt": "2024-05-01T10:00:00Z",
+                  "updatedAt": "2024-05-01T10:05:00Z",
+                  "finishedAt": "2024-05-01T10:05:00Z",
+                  "detailedStatus": { "text": "Failed", "label": "failed" }
+                },
+                {
+                  "id": "gid://gitlab/Ci::Pipeline/480",
+                  "iid": "30",
+                  "status": "SUCCESS",
+                  "path": "/group/alpha/-/pipelines/480",
+                  "ref": "refs/merge-requests/11/head",
+                  "sha": "def456",
+                  "createdAt": "2024-04-30T09:00:00Z",
+                  "updatedAt": "2024-04-30T09:10:00Z",
+                  "finishedAt": "2024-04-30T09:10:00Z",
+                  "detailedStatus": { "text": "Passed", "label": "passed" }
+                }
+              ]
+            }
+          },
+          {
+            "id": "gid://gitlab/MergeRequest/9003",
+            "iid": "13",
+            "pipelines": { "nodes": [] }
+          }
+        ]
+      }
+    }
+  }
+}

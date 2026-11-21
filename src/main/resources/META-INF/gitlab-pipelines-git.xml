@@ -1,0 +1,7 @@
+<!-- Loaded only when the bundled Git plugin (Git4Idea) is enabled. -->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.github.vgerya.gitlabpipelines">
+        <remotesProvider
+                implementation="com.github.vgerya.gitlabpipelines.plugin.remotes.Git4IdeaRemotesProvider"/>
+    </extensions>
+</idea-plugin>
