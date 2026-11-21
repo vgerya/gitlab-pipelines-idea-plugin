@@ -4,12 +4,37 @@
     <vendor>vgerya</vendor>
 
     <description><![CDATA[
-    Shows pipeline statuses of your open GitLab merge requests (gitlab.com or self-hosted) right in the IDE:
-    a tool window, a status bar widget and balloon notifications when a pipeline fails, succeeds or is canceled.
-    <br/><br/>
-    Статусы пайплайнов ваших открытых merge request'ов GitLab прямо в IDE:
-    окно инструментов, виджет в строке состояния и уведомления.
+    <p>Pipeline status of your open GitLab merge requests (gitlab.com or self-hosted) right in the IDE &mdash;
+    no more refreshing a browser tab to see whether CI passed.</p>
+    <ul>
+      <li>Tool window with your open MRs and their pipeline status; sort, group by project / branch, choose columns.</li>
+      <li>MRs you authored, optionally also those assigned to you or awaiting your review.</li>
+      <li>Optional history of the last 10 pipelines per MR.</li>
+      <li>&ldquo;Current project only&rdquo; filter based on the project's git remotes.</li>
+      <li>Status bar widget with the failed-pipeline count and notifications when a pipeline fails or succeeds.</li>
+      <li>GraphQL API with REST fallback; token kept in the IDE Password Safe; IDE proxy and certificates respected.</li>
+    </ul>
+    <p>Setup:</p>
+    <ol>
+      <li>Create a GitLab Personal Access Token with the <code>read_api</code> scope.</li>
+      <li>Open <b>Settings &rarr; Tools &rarr; GitLab MR Pipelines</b>, enter the GitLab URL and the token, click the connection test.</li>
+      <li>Open the <b>GitLab Pipelines</b> tool window.</li>
+    </ol>
+    <p>The plugin UI is in Russian. Documentation:
+    <a href="https://github.com/vgerya/gitlab-pipelines-idea-plugin#readme">README on GitHub</a>.</p>
     ]]></description>
+
+    <change-notes><![CDATA[
+    <p><b>1.1.0</b></p>
+    <ul>
+      <li>Tree table with grouping by project, branch, or project and branch.</li>
+      <li>Sort by any column; column chooser with reorder and resize, all persisted. New Role and Pipeline columns.</li>
+      <li>&ldquo;Current project only&rdquo; filter based on the IDE project's git remotes.</li>
+      <li>&ldquo;Show all pipelines&rdquo;: the last 10 pipelines of each MR as child rows.</li>
+      <li>Fixed: the Status column showed <code>MergeRequest(...)</code> instead of the status icon and label.</li>
+    </ul>
+    <p>Full history: <a href="https://github.com/vgerya/gitlab-pipelines-idea-plugin/blob/main/CHANGELOG.md">CHANGELOG</a>.</p>
+    ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
     <!-- Optional: git remotes for the «Только текущий проект» filter; without it .git/config is parsed. -->

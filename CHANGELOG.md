@@ -1,63 +1,63 @@
 # Changelog
 
-Все заметные изменения проекта описываются в этом файле.
-Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версии — [SemVer](https://semver.org/lang/ru/).
+All notable changes to this project are documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.1.0] — 2026-11-21
 
-### Добавлено
+### Added
 
-- Таблица окна инструментов стала деревом с **группировкой**: Нет / По проекту / По ветке / По проекту
-  и ветке. Строка группы показывает иконку худшего статуса, имя и число MR; раскрытие сохраняется
-  при обновлении.
-- **Сортировка по любой колонке** кликом по заголовку (повторный клик — обратный порядок, ▲ / ▼).
-  По умолчанию — по статусу, затем по времени обновления; пустые значения всегда внизу.
-- **Выбор колонок**: кнопка «Колонки» на панели или правый клик по заголовку. Колонки можно
-  перетаскивать и менять их ширину. Новые колонки **«Роль»** (Автор / Исполнитель / Ревьюер) и
-  **«Пайплайн»** (`#iid`), по умолчанию скрыты.
-- Переключатель **«Только текущий проект»**: только MR проектов, на которые указывают git remote'ы
-  открытого проекта IDE (SSH, scp-синтаксис, HTTP(S), GitLab в подпути; хост без учёта регистра, порт
-  игнорируется). Запоминается для каждого проекта отдельно. Виджет и уведомления по-прежнему учитывают
-  все MR.
-- Переключатель **«Показывать все пайплайны»**: последние 10 пайплайнов каждого MR дочерними строками.
-  Дополнительные запросы (GraphQL, с откатом на REST) выполняются только пока опция включена.
-- Двойной клик / Enter на строке пайплайна открывает пайплайн, на строке группы — раскрывает/сворачивает её.
-- Необязательная зависимость от встроенного плагина Git; без него remote'ы читаются из `.git/config`
-  каталога проекта и корней контента (включая worktree).
-- Настройки вида (колонки, порядок, ширина, сортировка, группировка, «Показывать все пайплайны»)
-  сохраняются в `gitlabMrPipelinesView.xml`.
+- The tool window table is now a tree with **grouping**: none / by project / by branch / by project and
+  branch. A group row shows the worst status icon, the name and the MR count; expansion is kept across
+  refreshes.
+- **Sorting by any column** by clicking its header (click again to reverse, ▲ / ▼). Default: by status,
+  then by update time; empty values always last.
+- **Column chooser**: the Columns toolbar button or right-click on the header. Columns can be reordered
+  by dragging and resized. New **Role** (author / assignee / reviewer) and **Pipeline** (`#iid`) columns,
+  hidden by default.
+- **Current project only** toggle: shows only MRs of the projects the open IDE project's git remotes point
+  to (SSH, scp-like, HTTP(S), GitLab in a sub-path; host case-insensitive, port ignored). Remembered per
+  project. The status bar widget and notifications still count all MRs.
+- **Show all pipelines** toggle: the last 10 pipelines of each MR as child rows. The extra requests
+  (GraphQL with REST fallback) are made only while the option is on.
+- Double-click / Enter on a pipeline row opens the pipeline; on a group row it expands/collapses the group.
+- Optional dependency on the bundled Git plugin; without it, remotes are read from `.git/config` of the
+  project directory and content roots (worktrees included).
+- View settings (columns, order, widths, sort, grouping, Show all pipelines) are persisted in
+  `gitlabMrPipelinesView.xml`.
 
-### Изменено
+### Changed
 
-- Релизы выпускаются автоматически: при повышении `pluginVersion` в `main` CI создаёт тег и GitHub
-  Release (ручной тег `vX.Y.Z` по-прежнему работает).
+- Releases are automatic: bumping `pluginVersion` on `main` makes CI create the tag and the GitHub Release
+  (a manual `vX.Y.Z` tag still works).
 
-### Исправлено
+### Fixed
 
-- В колонке «Статус» вместо иконки и подписи статуса выводился служебный текст `MergeRequest(...)`.
+- The Status column showed internal text `MergeRequest(...)` instead of the status icon and label.
 
 ## [1.0.1] — 2026-11-21
 
-### Изменено
+### Changed
 
-- Новая иконка окна «GitLab Pipelines»: 16×16 под новый интерфейс IDE, отдельный вариант для тёмной темы.
+- New "GitLab Pipelines" tool window icon: 16×16 for the new IDE UI, with a separate dark-theme variant.
 
 ## [1.0.0] — 2026-11-20
 
-Первый публичный релиз (GitHub Release с zip-файлом плагина). Код совпадает с версией 0.1.0.
+First public release (GitHub Release with the plugin zip). The code is the same as 0.1.0.
 
 ## [0.1.0] — 2026-11-20
 
-### Добавлено
+### Added
 
-- Первый выпуск плагина для IDE на платформе IntelliJ 2024.2+.
-- Окно инструментов «GitLab Pipelines» со списком открытых MR и статусами их пайплайнов.
-- Виджет в строке состояния с количеством упавших / выполняющихся пайплайнов.
-- Уведомления о завершении пайплайнов (failed, success, canceled, skipped, manual) с настройкой типов.
-- Настройки в *Settings → Tools → GitLab MR Pipelines*: URL GitLab, токен (в Password Safe),
-  интервал опроса, MR где вы assignee / reviewer, скрытие draft-MR, проверка соединения.
-- Поддержка gitlab.com и self-hosted GitLab (включая установку в подпути); GraphQL API с откатом на REST.
-- CI-сборка (test, buildPlugin, verifyPlugin) и GitHub Release по тегу `vX.Y.Z`.
+- First version of the plugin for IntelliJ-based IDEs 2024.2+.
+- "GitLab Pipelines" tool window listing open MRs and their pipeline status.
+- Status bar widget with the number of failed / running pipelines.
+- Notifications when pipelines finish (failed, success, canceled, skipped, manual), configurable per type.
+- Settings in *Settings → Tools → GitLab MR Pipelines*: GitLab URL, token (in Password Safe), poll
+  interval, MRs where you are assignee / reviewer, hiding draft MRs, connection test.
+- gitlab.com and self-hosted GitLab (including sub-path installs); GraphQL API with REST fallback.
+- CI build (test, buildPlugin, verifyPlugin) and GitHub Release on a `vX.Y.Z` tag.
 
 [1.1.0]: https://github.com/vgerya/gitlab-pipelines-idea-plugin/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/vgerya/gitlab-pipelines-idea-plugin/compare/v1.0.0...v1.0.1
