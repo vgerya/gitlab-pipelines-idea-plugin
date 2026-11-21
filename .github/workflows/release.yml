@@ -1,15 +1,57 @@
 name: Release
 
+# A release is published automatically when pluginVersion in gradle.properties is bumped on main:
+# if tag v<pluginVersion> does not exist yet, this workflow builds the plugin, creates the tag and the
+# GitHub Release with the zip. Pushing a tag v* by hand still works too.
 on:
   push:
+    branches: [main]
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  release:
+  check:
+    name: Detect new version
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      release: ${{ steps.v.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+            release=true
+          else
+            version=$(grep -E '^pluginVersion=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')
+            if [ -z "$version" ]; then echo "pluginVersion not found"; exit 1; fi
+            if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v${version}" >/dev/null 2>&1; then
+              echo "Tag v${version} already exists, nothing to release"
+              release=false
+            else
+              release=true
+            fi
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "release=${release}" >> "$GITHUB_OUTPUT"
+          echo "version=${version} release=${release}"
+
+  release:
+    needs: check
+    if: needs.check.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
     steps:
       - name: Free disk space (plugin verifier downloads several IDEs)
         run: |
@@ -41,8 +83,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Test, build and verify plugin
-        # plugin version is taken from the tag: v1.2.3 -> 1.2.3
-        run: ./gradlew test buildPlugin verifyPlugin -PpluginVersion="${GITHUB_REF_NAME#v}" --stacktrace
+        run: ./gradlew test buildPlugin verifyPlugin -PpluginVersion="${VERSION}" --stacktrace
 
       - name: Upload test reports
         if: failure()
@@ -58,6 +99,9 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: v${{ env.VERSION }}
           files: build/distributions/*.zip
           generate_release_notes: true
           fail_on_unmatched_files: true

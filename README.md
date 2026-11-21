@@ -69,15 +69,14 @@
 
 ## Процесс релиза
 
-1. Обновите `CHANGELOG.md` (и при желании `pluginVersion` в `gradle.properties`).
-2. Создайте и отправьте тег вида `vX.Y.Z`:
+Релиз выпускается автоматически при повышении версии:
 
-   ```bash
-   git tag v0.2.0
-   git push origin v0.2.0
-   ```
+1. Обновите `CHANGELOG.md` и поднимите `pluginVersion` в `gradle.properties` (например, `1.0.2`).
+2. Закоммитьте и отправьте в `main`.
+3. Workflow **Release** (`.github/workflows/release.yml`) увидит, что тега `v1.0.2` ещё нет,
+   прогонит тесты, `buildPlugin` и `verifyPlugin`, создаст тег и GitHub Release с zip-файлом плагина.
+   Если тег с такой версией уже есть, ничего не публикуется.
 
-3. Workflow **Release** (`.github/workflows/release.yml`) запустит тесты, `buildPlugin` и `verifyPlugin`
-   с версией из тега (`v0.2.0` → `0.2.0`) и создаст GitHub Release с прикреплённым zip-файлом плагина.
+Ручной тег `vX.Y.Z` тоже работает: релиз соберётся с версией из тега.
 
 Каждый push в любую ветку проверяется workflow **Build** (`.github/workflows/build.yml`).
