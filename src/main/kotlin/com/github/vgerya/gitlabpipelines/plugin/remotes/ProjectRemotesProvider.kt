@@ -8,6 +8,7 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import java.io.File
+import java.lang.reflect.InvocationTargetException
 
 /**
  * Supplies git remote URLs of an IDE project. The Git4Idea-backed implementation is registered
@@ -37,6 +38,8 @@ object ProjectRemotes {
             } catch (e: ProcessCanceledException) {
                 throw e
             } catch (e: Exception) {
+                val target = (e as? InvocationTargetException)?.targetException
+                if (target is ProcessCanceledException) throw target
                 LOG.info("Remotes provider ${provider.javaClass.name} failed: ${e.javaClass.simpleName}")
             }
         }
