@@ -46,14 +46,17 @@ class GitLabClient(baseUrl: String, token: String, private val transport: HttpTr
     /**
      * Recent pipelines (newest first, at most [limit]) of each MR, keyed by MR key. Separate from
      * [fetchMergeRequests] so that the regular poll stays cheap; GraphQL (one query per project and
-     * up to [PIPELINES_IIDS_PER_QUERY] MRs) with REST fallback (one request per MR).
+     * up to [PIPELINES_IIDS_PER_QUERY] MRs) with REST fallback (one request per MR). Only the first
+     * [RECENT_PIPELINES_MAX_MRS] MRs (in the given order) are queried, so that a long MR list cannot
+     * turn every poll into hundreds of requests.
      */
     fun fetchRecentPipelines(mrs: List<MergeRequest>, limit: Int = RECENT_PIPELINES): Map<String, List<Pipeline>> {
-        if (mrs.isEmpty()) return emptyMap()
+        val targets = mrs.take(RECENT_PIPELINES_MAX_MRS)
+        if (targets.isEmpty()) return emptyMap()
         return try {
-            fetchRecentPipelinesGraphQl(mrs, limit)
+            fetchRecentPipelinesGraphQl(targets, limit)
         } catch (e: GitLabException) {
-            if (e.kind in FALLBACK_KINDS) fetchRecentPipelinesRest(mrs, limit) else throw e
+            if (e.kind in FALLBACK_KINDS) fetchRecentPipelinesRest(targets, limit) else throw e
         }
     }
 
@@ -103,7 +106,8 @@ class GitLabClient(baseUrl: String, token: String, private val transport: HttpTr
                     try {
                         Json.parseRestPipelineList(restGet(url).body).take(limit)
                     } catch (e: GitLabException) {
-                        if (e.kind == ErrorKind.BAD_RESPONSE && e.httpStatus == 404) emptyList() else throw e
+                        // 404: MR/project gone; 403: no access to the pipelines of that project
+                        if (e.httpStatus == 404 || e.httpStatus == 403) emptyList() else throw e
                     }
                 }
             }
@@ -291,6 +295,7 @@ class GitLabClient(baseUrl: String, token: String, private val transport: HttpTr
         const val DEFAULT_RETRY_AFTER_SEC = 60L
         const val RECENT_PIPELINES = 10
         const val PIPELINES_IIDS_PER_QUERY = 20
+        const val RECENT_PIPELINES_MAX_MRS = 50
 
         val RECENT_PIPELINES_QUERY: String = """
             query(${'$'}fullPath: ID!, ${'$'}iids: [String!], ${'$'}first: Int) {

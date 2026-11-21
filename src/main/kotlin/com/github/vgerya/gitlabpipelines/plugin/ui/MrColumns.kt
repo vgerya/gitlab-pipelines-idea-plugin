@@ -119,6 +119,17 @@ object MrColumns {
     }
 }
 
+/**
+ * Tree node of the table. `toString` is what Swing falls back to (copy via Ctrl+C, accessibility,
+ * default renderers), so it must never be the data class `toString` of the row.
+ */
+class RowNode(private val row: MrRow) : DefaultMutableTreeNode(row, row.children.isNotEmpty()) {
+    override fun toString(): String = when (row) {
+        is GroupRow -> row.name
+        else -> MrColumns.cellText(row, MrColumn.STATUS)
+    }
+}
+
 /** Renders the tree (STATUS) column: status icon + Russian label; group rows: worst status icon + name + count. */
 class StatusTreeRenderer : ColoredTreeCellRenderer() {
     override fun customizeCellRenderer(

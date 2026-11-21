@@ -510,7 +510,7 @@ class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true,
 
     private fun addNodes(parent: DefaultMutableTreeNode, rows: List<MrRow>) {
         for (row in rows) {
-            val node = DefaultMutableTreeNode(row, row.children.isNotEmpty())
+            val node = RowNode(row)
             parent.add(node)
             addNodes(node, row.children)
         }

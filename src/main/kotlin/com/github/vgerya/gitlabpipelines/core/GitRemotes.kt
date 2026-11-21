@@ -17,6 +17,7 @@ object GitRemotes {
     private val SCP_LIKE = Regex("^(?:[^@/\\s]+@)?([^:/\\s]+):(?!//)(.+)$")
     private val SSH_SCHEMES = setOf("ssh", "git+ssh", "ssh+git", "git")
     private val HTTP_SCHEMES = setOf("http", "https")
+    private val INLINE_COMMENT = Regex("\\s[#;]")
 
     fun parse(remoteUrl: String?): Parsed? {
         val s = remoteUrl?.trim().orEmpty()
@@ -99,6 +100,10 @@ object GitRemotes {
             var value = line.substring(eq + 1).trim()
             if (value.length >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
                 value = value.substring(1, value.length - 1)
+            } else {
+                // unquoted values may carry an inline comment: `url = git@host:g/p.git # fork`
+                val comment = INLINE_COMMENT.find(value)
+                if (comment != null) value = value.substring(0, comment.range.first).trim()
             }
             if (value.isNotEmpty() && value !in result) result += value
         }

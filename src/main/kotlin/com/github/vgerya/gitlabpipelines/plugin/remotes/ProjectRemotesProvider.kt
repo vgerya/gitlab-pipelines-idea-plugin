@@ -37,9 +37,11 @@ object ProjectRemotes {
                 fromProviders += provider.remoteUrls(project)
             } catch (e: ProcessCanceledException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                // reflective Git4Idea access: API changes surface as NoSuchMethodException / LinkageError
                 val target = (e as? InvocationTargetException)?.targetException
                 if (target is ProcessCanceledException) throw target
+                if (e is VirtualMachineError) throw e
                 LOG.info("Remotes provider ${provider.javaClass.name} failed: ${e.javaClass.simpleName}")
             }
         }
@@ -62,11 +64,12 @@ object ProjectRemotes {
         }
         val result = LinkedHashSet<String>()
         for (root in roots) {
-            val config = gitConfigFile(root) ?: continue
             try {
+                val config = gitConfigFile(root) ?: continue
                 result += GitRemotes.remoteUrlsFromGitConfig(config.readText())
             } catch (e: Exception) {
-                LOG.info("Cannot read ${config.name}: ${e.javaClass.simpleName}")
+                // e.g. unreadable `.git` file of a worktree: must not escape to the pooled thread
+                LOG.info("Cannot read git config under ${root.name}: ${e.javaClass.simpleName}")
             }
         }
         return result.toList()

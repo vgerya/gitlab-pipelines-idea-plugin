@@ -186,8 +186,11 @@ object MrTreeBuilder {
             (kind == GroupKind.BRANCH && sort.column == MrColumn.BRANCH)
         return when {
             sort.column == MrColumn.STATUS -> {
+                // groups without any pipeline stay last in both directions (like MR rows)
                 val byStatus = compareBy<GroupRow> { it.category.order }
-                (if (sort.ascending) byStatus else byStatus.reversed()).then(byName)
+                compareBy<GroupRow> { it.category == Category.NONE }
+                    .then(if (sort.ascending) byStatus else byStatus.reversed())
+                    .then(byName)
             }
             nameMatchesSort -> if (sort.ascending) byName else byName.reversed()
             else -> byName
