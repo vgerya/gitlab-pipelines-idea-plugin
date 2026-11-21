@@ -49,6 +49,10 @@ data class Pipeline(
     val ref: String? = null,
     val sha: String? = null,
     val createdAt: Instant? = null,
+    /** When the pipeline started running (`null` while it has not started). */
+    val startedAt: Instant? = null,
+    /** Run time in seconds as reported by GitLab (excludes queue time); `null` until finished. */
+    val duration: Long? = null,
 )
 
 data class MergeRequest(

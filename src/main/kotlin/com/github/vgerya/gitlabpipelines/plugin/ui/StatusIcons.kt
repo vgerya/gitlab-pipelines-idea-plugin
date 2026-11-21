@@ -14,6 +14,7 @@ import java.awt.Color
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import javax.swing.Icon
 
 /** Pipeline status → icon / localized label; category → color; error → localized text. */
@@ -36,7 +37,7 @@ object StatusIcons {
         PipelineStatus.UNKNOWN -> AllIcons.RunConfigurations.TestUnknown
     }
 
-    /** Russian label; for [PipelineStatus.UNKNOWN] the raw GitLab status is shown. */
+    /** English label; for [PipelineStatus.UNKNOWN] the raw GitLab status is shown. */
     fun label(status: PipelineStatus?, rawStatus: String?): String = when (status) {
         null -> MyBundle.message("status.none")
         PipelineStatus.UNKNOWN -> rawStatus?.takeIf { it.isNotBlank() } ?: "unknown"
@@ -77,7 +78,11 @@ object StatusIcons {
     fun needsSettings(e: GitLabException?): Boolean =
         e != null && (e.kind == ErrorKind.AUTH || e.kind == ErrorKind.FORBIDDEN || e.kind == ErrorKind.NOT_CONFIGURED)
 
-    private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+    private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH)
+    private val DATE_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy, HH:mm:ss", Locale.ENGLISH)
+
+    /** `May 1, 2024, 10:05:00` in the system time zone. */
+    fun absoluteTime(instant: Instant): String = DATE_TIME_FORMAT.format(instant.atZone(ZoneId.systemDefault()))
 
     fun relativeTime(then: Instant?, now: Instant = Instant.now()): String {
         if (then == null) return ""

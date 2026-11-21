@@ -86,6 +86,22 @@ object Json {
         }
     }
 
+    /** Non-negative whole seconds from an integer or fractional number (or numeric string). */
+    fun JsonObject.seconds(name: String): Long? {
+        val p = member(name)?.takeIf { it.isJsonPrimitive }?.asJsonPrimitive ?: return null
+        val d = when {
+            p.isNumber -> try {
+                p.asDouble
+            } catch (e: NumberFormatException) {
+                return null
+            }
+            p.isString -> p.asString.trim().toDoubleOrNull() ?: return null
+            else -> return null
+        }
+        if (d.isNaN() || d < 0 || d > Long.MAX_VALUE.toDouble()) return null
+        return d.toLong()
+    }
+
     /** Null-safe ISO-8601 timestamp parsing (`Z` or offset); invalid values give `null`. */
     fun parseInstant(s: String?): Instant? {
         if (s.isNullOrBlank()) return null
@@ -174,6 +190,8 @@ object Json {
             webUrl = p.str("path")?.takeIf { it.isNotBlank() }?.let { UrlUtil.joinUrl(baseUrl, it) },
             updatedAt = parseInstant(p.str("updatedAt")),
             finishedAt = parseInstant(p.str("finishedAt")),
+            startedAt = parseInstant(p.str("startedAt")),
+            duration = p.seconds("duration"),
         )
     }
 
@@ -227,6 +245,8 @@ object Json {
             webUrl = p.str("web_url")?.takeIf { it.isNotBlank() },
             updatedAt = parseInstant(p.str("updated_at")),
             finishedAt = parseInstant(p.str("finished_at")),
+            startedAt = parseInstant(p.str("started_at")),
+            duration = p.seconds("duration"),
         )
     }
 

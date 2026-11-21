@@ -1,7 +1,8 @@
 package com.github.vgerya.gitlabpipelines.plugin.ui
 
+import com.github.vgerya.gitlabpipelines.core.BranchFilter
 import com.github.vgerya.gitlabpipelines.core.ErrorKind
-import com.github.vgerya.gitlabpipelines.core.GitRemotes
+import com.github.vgerya.gitlabpipelines.core.FilterMode
 import com.github.vgerya.gitlabpipelines.core.GroupRow
 import com.github.vgerya.gitlabpipelines.core.Grouping
 import com.github.vgerya.gitlabpipelines.core.MergeRequest
@@ -10,6 +11,8 @@ import com.github.vgerya.gitlabpipelines.core.MrColumn
 import com.github.vgerya.gitlabpipelines.core.MrRow
 import com.github.vgerya.gitlabpipelines.core.MrTreeBuilder
 import com.github.vgerya.gitlabpipelines.core.PipelineRow
+import com.github.vgerya.gitlabpipelines.core.PipelineTime
+import com.github.vgerya.gitlabpipelines.core.RepoState
 import com.github.vgerya.gitlabpipelines.core.UrlUtil
 import com.github.vgerya.gitlabpipelines.plugin.MyBundle
 import com.github.vgerya.gitlabpipelines.plugin.remotes.ProjectRemotes
@@ -57,6 +60,7 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.net.URI
 import java.time.ZoneId
+import java.util.concurrent.atomic.AtomicBoolean
 import java.time.format.DateTimeFormatter
 import javax.swing.AbstractAction
 import javax.swing.BoxLayout
@@ -66,6 +70,7 @@ import javax.swing.JPanel
 import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
 import javax.swing.SwingUtilities
+import javax.swing.Timer
 import javax.swing.event.ChangeEvent
 import javax.swing.event.ListSelectionEvent
 import javax.swing.event.TableColumnModelEvent
@@ -78,7 +83,7 @@ import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.TreePath
 
 /**
- * Content of the «GitLab Pipelines» tool window: one tree table for all modes (flat = no group
+ * Content of the "GitLab Pipelines" tool window: one tree table for all modes (flat = no group
  * nodes). The STATUS column is the tree column. All methods run on the EDT unless stated otherwise.
  */
 class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true, true), Disposable {
@@ -88,7 +93,9 @@ class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true,
 
     private val root = DefaultMutableTreeNode()
     private val model = ListTreeTableModelOnColumns(root, MrColumns.createColumnInfos())
-    private val table = TreeTableView(model)
+    private val table = object : TreeTableView(model) {
+        override fun getToolTipText(event: MouseEvent): String? = cellTooltip(event) ?: super.getToolTipText(event)
+    }
 
     private val updatedLabel = JBLabel()
     private val errorLabel = JBLabel(AllIcons.General.Error)
@@ -97,8 +104,18 @@ class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true,
 
     private var snapshot: Snapshot = PipelinesService.getInstance().snapshot
 
-    /** Lower-cased GitLab project paths of the IDE project's git remotes; `null` = not computed yet. */
-    private var remotePaths: Set<String>? = null
+    /** Repositories of the IDE project that point to the configured GitLab; `null` = not computed yet. */
+    private var repoStates: List<RepoState>? = null
+    private val repoUpdateRunning = AtomicBoolean(false)
+    private var repoUpdatePending = false
+
+    /**
+     * 1 s tick while the tool window is visible: repaints live durations of running pipelines and,
+     * every [REPO_CHECK_TICKS] ticks, re-reads remotes and current branches (cheap: in-memory Git4Idea
+     * state or a small `.git/HEAD` read) so that a `git checkout` shows up within a few seconds.
+     */
+    private val ticker = Timer(1000) { onTick() }
+    private var tick = 0
 
     /** Node ids the user expanded / collapsed; groups are expanded by default, MR rows collapsed. */
     private val expandedIds = HashSet<String>()
@@ -143,10 +160,25 @@ class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true,
                 }
             },
         )
+        ProjectRemotes.subscribe(project, this) {
+            ApplicationManager.getApplication().invokeLater { if (!disposed) updateRemotes() }
+        }
         render(snapshot)
         updateRemotes()
+        ticker.start()
         PipelinesService.getInstance().ensureStarted()
     }
+
+    private fun onTick() {
+        if (disposed || !table.isShowing) return
+        tick++
+        if (tick % REPO_CHECK_TICKS == 0) updateRemotes()
+        if (MrColumn.DURATION in view.visibleColumns && snapshot.hasRunningPipeline()) table.repaint()
+    }
+
+    private fun Snapshot.hasRunningPipeline(): Boolean =
+        mrs.any { mr -> mr.pipeline?.let { PipelineTime.isRunning(it) } == true } ||
+            (view.showAllPipelines && pipelines.values.any { list -> list.any { PipelineTime.isRunning(it) } })
 
     // ------------------------------------------------------------------ toolbar & actions
 
@@ -154,7 +186,7 @@ class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true,
         val group = DefaultActionGroup()
         ActionManager.getInstance().getAction(RefreshAction.ID)?.let { group.add(it) }
         group.add(Separator.getInstance())
-        group.add(OnlyCurrentProjectAction())
+        group.add(createFilterGroup())
         group.add(createGroupingGroup())
         group.add(ShowAllPipelinesAction())
         group.add(createColumnsGroup())
@@ -165,38 +197,54 @@ class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true,
         return toolbar.component
     }
 
+    /*
+     * Toolbar icons must stay distinct in the new UI: there AllIcons.Actions.GroupBy is mapped to the
+     * same "eye" as AllIcons.Actions.Show, so grouping uses GroupByPackage and columns DataTables.
+     */
+
+    private fun popupGroup(textKey: String, descriptionKey: String, icon: Icon): DefaultActionGroup {
+        val group = DefaultActionGroup(MyBundle.message(textKey), true)
+        group.templatePresentation.icon = icon
+        group.templatePresentation.description = MyBundle.message(descriptionKey)
+        return group
+    }
+
+    private fun createFilterGroup(): DefaultActionGroup {
+        val group = popupGroup("action.filter", "action.filter.description", AllIcons.General.Filter)
+        FilterMode.values().forEach { group.add(FilterModeAction(it)) }
+        return group
+    }
+
     private fun createGroupingGroup(): DefaultActionGroup {
-        val group = DefaultActionGroup(MyBundle.message("action.grouping"), true)
-        group.templatePresentation.icon = AllIcons.Actions.GroupBy
-        group.templatePresentation.description = MyBundle.message("action.grouping")
+        val group = popupGroup("action.grouping", "action.grouping.description", AllIcons.Actions.GroupByPackage)
         Grouping.values().forEach { group.add(GroupingAction(it)) }
         return group
     }
 
     private fun createColumnsGroup(): DefaultActionGroup {
-        val group = DefaultActionGroup(MyBundle.message("action.columns"), true)
-        group.templatePresentation.icon = AllIcons.Actions.Show
-        group.templatePresentation.description = MyBundle.message("action.columns")
+        val group = popupGroup("action.columns", "action.columns.description", AllIcons.Nodes.DataTables)
         MrColumn.values().forEach { group.add(ColumnToggleAction(it)) }
         return group
     }
 
-    private abstract inner class ViewToggle(text: String, icon: Icon? = null) :
-        ToggleAction(text, text, icon), DumbAware {
+    private abstract inner class ViewToggle(text: String, description: String = text, icon: Icon? = null) :
+        ToggleAction(text, description, icon), DumbAware {
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
     }
 
-    private inner class OnlyCurrentProjectAction :
-        ViewToggle(MyBundle.message("action.onlyCurrentProject"), AllIcons.Actions.ProjectDirectory) {
-        override fun isSelected(e: AnActionEvent): Boolean = projectState.onlyCurrentProject
+    private inner class FilterModeAction(private val mode: FilterMode) : ViewToggle(filterText(mode)) {
+        override fun isSelected(e: AnActionEvent): Boolean = projectState.filterMode == mode
 
         override fun setSelected(e: AnActionEvent, state: Boolean) {
-            setOnlyCurrentProject(state)
+            if (state) setFilterMode(mode)
         }
     }
 
-    private inner class ShowAllPipelinesAction :
-        ViewToggle(MyBundle.message("action.showAllPipelines"), AllIcons.Vcs.History) {
+    private inner class ShowAllPipelinesAction : ViewToggle(
+        MyBundle.message("action.showAllPipelines"),
+        MyBundle.message("action.showAllPipelines.description"),
+        AllIcons.Vcs.History,
+    ) {
         override fun isSelected(e: AnActionEvent): Boolean = view.showAllPipelines
 
         override fun setSelected(e: AnActionEvent, state: Boolean) {
@@ -241,8 +289,15 @@ class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true,
         Grouping.PROJECT_BRANCH -> MyBundle.message("grouping.projectBranch")
     }
 
-    private fun setOnlyCurrentProject(state: Boolean) {
-        projectState.onlyCurrentProject = state
+    private fun filterText(mode: FilterMode): String = when (mode) {
+        FilterMode.ALL -> MyBundle.message("filter.all")
+        FilterMode.CURRENT_PROJECT -> MyBundle.message("filter.currentProject")
+        FilterMode.CURRENT_BRANCH -> MyBundle.message("filter.currentBranch")
+    }
+
+    private fun setFilterMode(mode: FilterMode) {
+        if (projectState.filterMode == mode) return
+        projectState.filterMode = mode
         rebuild()
         updateRemotes()
     }
@@ -455,27 +510,44 @@ class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true,
         rebuild()
     }
 
-    /** Recomputes the remote project paths in the background (only while the filter is on). */
+    /**
+     * Recomputes the project's repositories (remotes + current branches) in the background; only while
+     * a filter is active. At most one computation runs at a time; a request during it re-runs it once.
+     */
     private fun updateRemotes() {
-        if (!projectState.onlyCurrentProject) return
+        if (disposed || projectState.filterMode == FilterMode.ALL) return
+        if (!repoUpdateRunning.compareAndSet(false, true)) {
+            repoUpdatePending = true
+            return
+        }
+        repoUpdatePending = false
         val baseUrl = GitLabSettings.getInstance().baseUrl
         ApplicationManager.getApplication().executeOnPooledThread {
-            if (disposed || project.isDisposed) return@executeOnPooledThread
-            val paths = GitRemotes.projectPaths(ProjectRemotes.collect(project), baseUrl)
-            ApplicationManager.getApplication().invokeLater {
-                if (!disposed && !project.isDisposed && paths != remotePaths) {
-                    remotePaths = paths
-                    rebuild()
+            var states: List<RepoState>? = null
+            try {
+                if (!disposed && !project.isDisposed) {
+                    states = BranchFilter.resolve(ProjectRemotes.repositories(project), baseUrl)
+                }
+            } finally {
+                ApplicationManager.getApplication().invokeLater {
+                    repoUpdateRunning.set(false)
+                    if (disposed || project.isDisposed) return@invokeLater
+                    if (states != null && states != repoStates) {
+                        repoStates = states
+                        rebuild()
+                    }
+                    if (repoUpdatePending) updateRemotes()
                 }
             }
         }
     }
 
     private fun visibleMergeRequests(): List<MergeRequest> {
-        val paths = remotePaths
-        // until the remotes are known, show everything rather than an empty list
-        if (!projectState.onlyCurrentProject || paths == null) return snapshot.mrs
-        return GitRemotes.filterByProjects(snapshot.mrs, paths)
+        val repos = repoStates
+        val mode = projectState.filterMode
+        // until the repositories are known, show everything rather than an empty list
+        if (mode == FilterMode.ALL || repos == null) return snapshot.mrs
+        return BranchFilter.filter(snapshot.mrs, mode, repos)
     }
 
     private fun rebuild() {
@@ -552,17 +624,20 @@ class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true,
                 ) { openSettings() }
             }
             s.loading && s.lastSuccess == null -> emptyText.appendText(MyBundle.message("toolwindow.updating"))
-            shown.isEmpty() && s.mrs.isNotEmpty() && projectState.onlyCurrentProject -> {
-                val message = if (remotePaths.isNullOrEmpty()) {
-                    MyBundle.message("toolwindow.empty.noRemotes", gitLabHost())
-                } else {
-                    MyBundle.message("toolwindow.empty.filtered")
+            shown.isEmpty() && s.mrs.isNotEmpty() && projectState.filterMode != FilterMode.ALL -> {
+                val repos = repoStates.orEmpty()
+                val branches = BranchFilter.currentBranches(repos)
+                val message = when {
+                    repos.isEmpty() -> MyBundle.message("toolwindow.empty.noRemotes", gitLabHost())
+                    projectState.filterMode == FilterMode.CURRENT_PROJECT -> MyBundle.message("toolwindow.empty.filtered")
+                    branches.isEmpty() -> MyBundle.message("toolwindow.empty.noBranch")
+                    else -> MyBundle.message("toolwindow.empty.noBranchMrs", branches.joinToString(", "))
                 }
                 emptyText.appendText(message)
                 emptyText.appendSecondaryText(
-                    MyBundle.message("toolwindow.empty.showAllProjects"),
+                    MyBundle.message("toolwindow.empty.showAll"),
                     SimpleTextAttributes.LINK_PLAIN_ATTRIBUTES,
-                ) { setOnlyCurrentProject(false) }
+                ) { setFilterMode(FilterMode.ALL) }
             }
             else -> emptyText.appendText(MyBundle.message("toolwindow.empty.noMrs"))
         }
@@ -581,11 +656,25 @@ class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true,
         OpenSettingsAction.show(project)
     }
 
+    /** Tooltip of the cell under the mouse for the text columns; `null` = default behaviour. */
+    private fun cellTooltip(event: MouseEvent): String? {
+        val viewRow = table.rowAtPoint(event.point)
+        val viewColumn = table.columnAtPoint(event.point)
+        if (viewRow < 0 || viewColumn < 0) return null
+        val column = table.columnModel.getColumn(viewColumn).identifier as? MrColumn ?: return null
+        if (column == MrColumn.STATUS) return null
+        val row = MrColumns.rowOf(table.tree.getPathForRow(viewRow)?.lastPathComponent) ?: return null
+        return MrColumns.cellTooltip(row, column)
+    }
+
     override fun dispose() {
         disposed = true
+        ticker.stop()
     }
 
     companion object {
+        private const val REPO_CHECK_TICKS = 4
+
         private val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     }
 }

@@ -46,7 +46,7 @@ data class Snapshot(
     val lastSuccess: Instant?,
     val error: GitLabException?,
     val loading: Boolean,
-    /** Recent pipelines per MR key; filled only while «Показывать все пайплайны» is on. */
+    /** Recent pipelines per MR key; filled only while "Show All Pipelines" is on. */
     val pipelines: Map<String, List<Pipeline>> = emptyMap(),
 ) {
     companion object {

@@ -20,10 +20,11 @@ import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPasswordField
 import com.intellij.ui.components.JBTextField
+import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.COLUMNS_LARGE
+import com.intellij.ui.dsl.builder.MAX_LINE_LENGTH_WORD_WRAP
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
-import com.intellij.util.ui.UIUtil
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.event.DocumentEvent
@@ -33,8 +34,8 @@ class GitLabConfigurable : Configurable {
 
     private val urlField = JBTextField()
     private val tokenField = JBPasswordField()
-    private val tokenHint = JBLabel()
-    private val tokenLink = ActionLink("") { BrowserUtil.browse(tokenPageUrl()) }
+    /** Short link; the URL (computed from the current GitLab URL) is never shown as text. */
+    private val tokenLink = ActionLink(MyBundle.message("settings.token.create")) { BrowserUtil.browse(tokenPageUrl()) }
     private val pollSpinner = JBIntSpinner(
         GitLabSettings.DEFAULT_POLL_SECONDS,
         GitLabSettings.MIN_POLL_SECONDS,
@@ -68,7 +69,7 @@ class GitLabConfigurable : Configurable {
                 updateTokenLink()
             }
         })
-        tokenHint.foreground = UIUtil.getContextHelpForeground()
+        tokenLink.setExternalLinkIcon()
         testButton.addActionListener { testConnection() }
     }
 
@@ -76,13 +77,13 @@ class GitLabConfigurable : Configurable {
         disposed = false
         return panel {
             row(MyBundle.message("settings.url")) {
-                cell(urlField).columns(COLUMNS_LARGE)
+                cell(urlField).columns(COLUMNS_LARGE).align(AlignX.FILL)
             }
             row(MyBundle.message("settings.token")) {
-                cell(tokenField).columns(COLUMNS_LARGE)
+                cell(tokenField).columns(COLUMNS_LARGE).align(AlignX.FILL)
+                    .comment(MyBundle.message("settings.token.comment"), MAX_LINE_LENGTH_WORD_WRAP)
             }
             row("") {
-                cell(tokenHint)
                 cell(tokenLink)
             }
             row(MyBundle.message("settings.poll")) {
@@ -109,8 +110,7 @@ class GitLabConfigurable : Configurable {
     }
 
     private fun updateTokenLink() {
-        tokenHint.text = MyBundle.message("settings.token.comment", "")
-        tokenLink.text = tokenPageUrl()
+        tokenLink.toolTipText = tokenPageUrl()
     }
 
     private fun typedToken(): String = String(tokenField.password).trim()

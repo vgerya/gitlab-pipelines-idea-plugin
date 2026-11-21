@@ -305,7 +305,7 @@ class GitLabClient(baseUrl: String, token: String, private val transport: HttpTr
                     id iid
                     pipelines(first: ${'$'}first) {
                       nodes {
-                        id iid status path ref sha createdAt updatedAt finishedAt
+                        id iid status path ref sha createdAt updatedAt finishedAt startedAt duration
                         detailedStatus { text label }
                       }
                     }
@@ -332,7 +332,7 @@ class GitLabClient(baseUrl: String, token: String, private val transport: HttpTr
                     id iid title webUrl draft sourceBranch updatedAt
                     project { fullPath }
                     headPipeline {
-                      id iid status path updatedAt finishedAt
+                      id iid status path updatedAt finishedAt startedAt duration
                       detailedStatus { text label group icon detailsPath }
                     }
                   }

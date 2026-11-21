@@ -17,6 +17,8 @@ class ViewSettings : SimplePersistentStateComponent<ViewSettings.ViewState>(View
 
     class ViewState : BaseState() {
         var visibleColumns by string(MrColumn.toCsv(MrColumn.DEFAULT_VISIBLE))
+        /** Columns that existed when [visibleColumns] was saved; empty = saved by 1.1. */
+        var knownColumns by string("")
         var columnOrder by string("")
         /** `COLUMN=width` pairs separated by commas. */
         var columnWidths by string("")
@@ -28,9 +30,18 @@ class ViewSettings : SimplePersistentStateComponent<ViewSettings.ViewState>(View
 
     /** Always contains [MrColumn.STATUS] (the tree column). */
     var visibleColumns: Set<MrColumn>
-        get() = MrColumn.parseList(state.visibleColumns).toSet() + MrColumn.STATUS
+        get() = MrColumn.effectiveVisible(
+            MrColumn.parseList(state.visibleColumns),
+            // a never-changed value is the current default, which knows every column
+            if (state.visibleColumns == null || state.visibleColumns == MrColumn.toCsv(MrColumn.DEFAULT_VISIBLE)) {
+                MrColumn.values().toList()
+            } else {
+                MrColumn.parseList(state.knownColumns)
+            },
+        )
         set(value) {
             state.visibleColumns = MrColumn.toCsv(MrColumn.values().filter { it in value || it == MrColumn.STATUS })
+            state.knownColumns = MrColumn.toCsv(MrColumn.values().toList())
         }
 
     var columnOrder: List<MrColumn>

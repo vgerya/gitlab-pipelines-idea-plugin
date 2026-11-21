@@ -10,6 +10,8 @@ import com.github.vgerya.gitlabpipelines.core.MrRow
 import com.github.vgerya.gitlabpipelines.core.MrSort
 import com.github.vgerya.gitlabpipelines.core.Pipeline
 import com.github.vgerya.gitlabpipelines.core.PipelineRow
+import com.github.vgerya.gitlabpipelines.core.PipelineTime
+import com.github.vgerya.gitlabpipelines.core.RefDisplay
 import com.github.vgerya.gitlabpipelines.core.Role
 import com.github.vgerya.gitlabpipelines.plugin.MyBundle
 import com.intellij.icons.AllIcons
@@ -34,11 +36,14 @@ object MrColumns {
         MrColumn.ROLE -> MyBundle.message("column.role")
         MrColumn.UPDATED -> MyBundle.message("column.updated")
         MrColumn.PIPELINE -> MyBundle.message("column.pipeline")
+        MrColumn.STARTED -> MyBundle.message("column.started")
+        MrColumn.DURATION -> MyBundle.message("column.duration")
+        MrColumn.FINISHED -> MyBundle.message("column.finished")
     }
 
     /** Default width in unscaled pixels. */
     fun defaultWidth(column: MrColumn): Int = when (column) {
-        MrColumn.STATUS -> 170
+        MrColumn.STATUS -> 260
         MrColumn.PROJECT -> 160
         MrColumn.MR -> 60
         MrColumn.TITLE -> 320
@@ -46,6 +51,9 @@ object MrColumns {
         MrColumn.ROLE -> 110
         MrColumn.UPDATED -> 110
         MrColumn.PIPELINE -> 80
+        MrColumn.STARTED -> 110
+        MrColumn.DURATION -> 90
+        MrColumn.FINISHED -> 110
     }
 
     /** STATUS is the tree column (renders icon + label via [StatusTreeRenderer]); the others are text. */
@@ -78,15 +86,46 @@ object MrColumns {
         MrColumn.ROLE -> roles(mr)
         MrColumn.UPDATED -> StatusIcons.relativeTime(MrSort.effectiveUpdatedAt(mr))
         MrColumn.PIPELINE -> mr.pipeline?.let { pipelineNumber(it) }.orEmpty()
+        MrColumn.STARTED, MrColumn.DURATION, MrColumn.FINISHED -> mr.pipeline?.let { timeText(it, column) }.orEmpty()
     }
 
     private fun pipelineText(p: Pipeline, column: MrColumn): String = when (column) {
         MrColumn.STATUS -> StatusIcons.label(p.status, p.rawStatus)
         MrColumn.TITLE -> p.sha?.take(8).orEmpty()
-        MrColumn.BRANCH -> p.ref.orEmpty()
+        MrColumn.BRANCH -> RefDisplay.format(p.ref)
         MrColumn.UPDATED -> StatusIcons.relativeTime(p.updatedAt ?: p.createdAt)
         MrColumn.PIPELINE -> pipelineNumber(p)
+        MrColumn.STARTED, MrColumn.DURATION, MrColumn.FINISHED -> timeText(p, column)
         MrColumn.PROJECT, MrColumn.MR, MrColumn.ROLE -> ""
+    }
+
+    /** Started / Finished: relative time, Duration: `4m 12s` (live for running pipelines); `—` if not available. */
+    private fun timeText(p: Pipeline, column: MrColumn): String = when (column) {
+        MrColumn.STARTED -> p.startedAt?.let { StatusIcons.relativeTime(it) } ?: PipelineTime.NONE
+        MrColumn.FINISHED -> p.finishedAt?.let { StatusIcons.relativeTime(it) } ?: PipelineTime.NONE
+        MrColumn.DURATION -> PipelineTime.durationText(p)
+        else -> ""
+    }
+
+    /** Cell tooltip: absolute times, full refs and titles; `null` = no tooltip. */
+    fun cellTooltip(row: MrRow, column: MrColumn): String? {
+        val (mr, p) = when (row) {
+            is MergeRequestRow -> row.mr to row.mr.pipeline
+            is PipelineRow -> row.mr to row.pipeline
+            is GroupRow -> return null
+        }
+        return when (column) {
+            MrColumn.STARTED -> p?.startedAt?.let { StatusIcons.absoluteTime(it) }
+            MrColumn.FINISHED -> p?.finishedAt?.let { StatusIcons.absoluteTime(it) }
+            MrColumn.UPDATED -> (if (row is PipelineRow) p?.updatedAt ?: p?.createdAt else MrSort.effectiveUpdatedAt(mr))
+                ?.let { StatusIcons.absoluteTime(it) }
+            MrColumn.DURATION -> p?.takeIf { PipelineTime.isRunning(it) }
+                ?.let { MyBundle.message("tooltip.running", PipelineTime.durationText(it)) }
+            MrColumn.BRANCH -> if (row is PipelineRow) p?.ref?.takeIf { it.isNotBlank() } else mr.sourceBranch.ifBlank { null }
+            MrColumn.TITLE -> if (row is MergeRequestRow) titleWithTags(mr) else p?.sha
+            MrColumn.PROJECT -> if (row is MergeRequestRow) mr.projectPath.ifBlank { null } else null
+            else -> null
+        }
     }
 
     fun pipelineNumber(p: Pipeline): String = "#" + (p.iid ?: GlobalIds.numericId(p.id)?.toString() ?: "?")
@@ -130,7 +169,7 @@ class RowNode(private val row: MrRow) : DefaultMutableTreeNode(row, row.children
     }
 }
 
-/** Renders the tree (STATUS) column: status icon + Russian label; group rows: worst status icon + name + count. */
+/** Renders the tree (STATUS) column: status icon + label; group rows: worst status icon + name + count. */
 class StatusTreeRenderer : ColoredTreeCellRenderer() {
     override fun customizeCellRenderer(
         tree: JTree,

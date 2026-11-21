@@ -10,7 +10,8 @@
       <li>Tool window with your open MRs and their pipeline status; sort, group by project / branch, choose columns.</li>
       <li>MRs you authored, optionally also those assigned to you or awaiting your review.</li>
       <li>Optional history of the last 10 pipelines per MR.</li>
-      <li>&ldquo;Current project only&rdquo; filter based on the project's git remotes.</li>
+      <li>Filter to the current project, or to the current project and checked-out git branch.</li>
+      <li>Pipeline start time and duration columns.</li>
       <li>Status bar widget with the failed-pipeline count and notifications when a pipeline fails or succeeds.</li>
       <li>GraphQL API with REST fallback; token kept in the IDE Password Safe; IDE proxy and certificates respected.</li>
     </ul>
@@ -20,11 +21,20 @@
       <li>Open <b>Settings &rarr; Tools &rarr; GitLab MR Pipelines</b>, enter the GitLab URL and the token, click the connection test.</li>
       <li>Open the <b>GitLab Pipelines</b> tool window.</li>
     </ol>
-    <p>The plugin UI is in Russian. Documentation:
+    <p>Documentation:
     <a href="https://github.com/vgerya/gitlab-pipelines-idea-plugin#readme">README on GitHub</a>.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+    <p><b>1.2.0</b></p>
+    <ul>
+      <li>The whole UI is now in English.</li>
+      <li>New filter: All merge requests / Current project / Current project and branch (follows <code>git checkout</code>).</li>
+      <li>New Started, Duration and Finished columns.</li>
+      <li>Distinct toolbar icons for Filter, Group By and Columns.</li>
+      <li>Recent pipeline refs shown as &ldquo;MR !881&rdquo; / &ldquo;MR !881 (merged result)&rdquo;.</li>
+      <li>Settings: the token hint no longer widens the page; a &ldquo;Create token&rdquo; link instead of the full URL.</li>
+    </ul>
     <p><b>1.1.0</b></p>
     <ul>
       <li>Tree table with grouping by project, branch, or project and branch.</li>
@@ -37,7 +47,8 @@
     ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
-    <!-- Optional: git remotes for the «Только текущий проект» filter; without it .git/config is parsed. -->
+    <!-- Optional: git remotes and current branch for the "Current Project" / "Current Project and Branch" filters;
+         without it .git/config and .git/HEAD are read. -->
     <depends optional="true" config-file="gitlab-pipelines-git.xml">Git4Idea</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>

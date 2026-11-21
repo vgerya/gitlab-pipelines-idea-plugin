@@ -1,5 +1,6 @@
 package com.github.vgerya.gitlabpipelines.plugin.settings
 
+import com.github.vgerya.gitlabpipelines.core.FilterMode
 import com.intellij.openapi.components.BaseState
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.SimplePersistentStateComponent
@@ -14,13 +15,18 @@ import com.intellij.openapi.project.Project
 class ProjectViewState : SimplePersistentStateComponent<ProjectViewState.ProjectState>(ProjectState()) {
 
     class ProjectState : BaseState() {
+        /** 1.1 setting, read only to migrate it to [filterMode]. */
         var onlyCurrentProject by property(false)
+
+        /** [FilterMode] name; `null` = not chosen yet (fall back to [onlyCurrentProject]). */
+        var filterMode by string(null)
     }
 
-    var onlyCurrentProject: Boolean
-        get() = state.onlyCurrentProject
+    var filterMode: FilterMode
+        get() = FilterMode.resolve(state.filterMode, state.onlyCurrentProject)
         set(value) {
-            state.onlyCurrentProject = value
+            state.filterMode = value.name
+            state.onlyCurrentProject = false
         }
 
     companion object {

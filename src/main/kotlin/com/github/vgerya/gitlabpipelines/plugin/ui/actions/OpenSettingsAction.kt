@@ -11,7 +11,7 @@ import com.intellij.openapi.project.Project
 
 class OpenSettingsAction : DumbAwareAction(
     MyBundle.message("action.settings"),
-    MyBundle.message("action.settings"),
+    MyBundle.message("action.settings.description"),
     AllIcons.General.Settings,
 ) {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT

@@ -4,11 +4,27 @@ import java.time.Instant
 
 /** Columns of the tool window table; also the sort keys. */
 enum class MrColumn {
-    STATUS, PROJECT, MR, TITLE, BRANCH, ROLE, UPDATED, PIPELINE;
+    STATUS, PROJECT, MR, TITLE, BRANCH, ROLE, UPDATED, PIPELINE, STARTED, DURATION, FINISHED;
+
+    /** Time columns sort newest first on the first click. */
+    val newestFirst: Boolean get() = this == UPDATED || this == STARTED || this == FINISHED
 
     companion object {
-        /** Columns shown by default (ROLE and PIPELINE are opt-in). */
-        val DEFAULT_VISIBLE: List<MrColumn> = listOf(STATUS, PROJECT, MR, TITLE, BRANCH, UPDATED)
+        /** Columns shown by default (ROLE, PIPELINE and FINISHED are opt-in). */
+        val DEFAULT_VISIBLE: List<MrColumn> = listOf(STATUS, PROJECT, MR, TITLE, BRANCH, UPDATED, STARTED, DURATION)
+
+        /** Columns that existed in 1.1 (settings saved without a "known columns" list know only these). */
+        val V1_1_COLUMNS: List<MrColumn> = listOf(STATUS, PROJECT, MR, TITLE, BRANCH, ROLE, UPDATED, PIPELINE)
+
+        /**
+         * Visible columns from the saved list: columns the user already knew about ([known]; `null` =
+         * saved by 1.1) keep their saved visibility, newer columns get their default visibility.
+         */
+        fun effectiveVisible(saved: List<MrColumn>, known: List<MrColumn>?): Set<MrColumn> {
+            val knownSet = (known?.takeIf { it.isNotEmpty() } ?: V1_1_COLUMNS).toSet()
+            val newDefaults = DEFAULT_VISIBLE.filter { it !in knownSet }
+            return (saved + newDefaults).toSet() + STATUS
+        }
 
         fun parse(s: String?): MrColumn? = s?.trim()?.uppercase()?.let { v -> values().firstOrNull { it.name == v } }
 
@@ -32,9 +48,9 @@ enum class Grouping {
 }
 
 data class SortSpec(val column: MrColumn, val ascending: Boolean) {
-    /** Header click: same column flips the direction; another column starts ascending (UPDATED: newest first). */
+    /** Header click: same column flips the direction; another column starts ascending (time columns: newest first). */
     fun toggle(clicked: MrColumn): SortSpec =
-        if (clicked == column) copy(ascending = !ascending) else SortSpec(clicked, clicked != MrColumn.UPDATED)
+        if (clicked == column) copy(ascending = !ascending) else SortSpec(clicked, !clicked.newestFirst)
 
     companion object {
         /** Status (failed first), ties broken by update time, newest first. */
@@ -82,7 +98,7 @@ object MrSort {
      * Comparator for [spec]. `null` values (no pipeline, no time) are always last, whatever the
      * direction. Ties are broken by the default order (status, then updated desc, then key).
      */
-    fun comparator(spec: SortSpec): Comparator<MergeRequest> {
+    fun comparator(spec: SortSpec, now: Instant = Instant.now()): Comparator<MergeRequest> {
         val primary: Comparator<MergeRequest> = when (spec.column) {
             // MRs without a pipeline stay last in both directions
             MrColumn.STATUS -> directed(spec.ascending) { mr -> mr.category.order.takeIf { mr.category != Category.NONE } }
@@ -93,11 +109,15 @@ object MrSort {
             MrColumn.ROLE -> directed(spec.ascending) { roleRank(it) }
             MrColumn.UPDATED -> directed(spec.ascending) { effectiveUpdatedAt(it) }
             MrColumn.PIPELINE -> directed(spec.ascending) { GlobalIds.numericId(it.pipeline?.id) }
+            MrColumn.STARTED -> directed(spec.ascending) { it.pipeline?.startedAt }
+            MrColumn.DURATION -> directed(spec.ascending) { mr -> mr.pipeline?.let { PipelineTime.durationSeconds(it, now) } }
+            MrColumn.FINISHED -> directed(spec.ascending) { it.pipeline?.finishedAt }
         }
         return primary.then(Summary.COMPARATOR)
     }
 
-    fun sort(mrs: List<MergeRequest>, spec: SortSpec): List<MergeRequest> = mrs.sortedWith(comparator(spec))
+    fun sort(mrs: List<MergeRequest>, spec: SortSpec, now: Instant = Instant.now()): List<MergeRequest> =
+        mrs.sortedWith(comparator(spec, now))
 
     private fun <T : Comparable<T>> directed(ascending: Boolean, key: (MergeRequest) -> T?): Comparator<MergeRequest> =
         directedWith(ascending, Comparator.naturalOrder(), key)
@@ -201,7 +221,11 @@ object MrTreeBuilder {
     fun searchText(row: MrRow): String = when (row) {
         is GroupRow -> row.name
         is MergeRequestRow -> "!${row.mr.iid} ${row.mr.title} ${row.mr.projectPath} ${row.mr.sourceBranch}"
-        is PipelineRow -> "#${row.pipeline.iid ?: GlobalIds.numericId(row.pipeline.id) ?: ""} ${row.pipeline.ref.orEmpty()}"
+        is PipelineRow -> {
+            val ref = row.pipeline.ref.orEmpty()
+            val shown = RefDisplay.format(ref)
+            "#${row.pipeline.iid ?: GlobalIds.numericId(row.pipeline.id) ?: ""} $ref" + if (shown != ref) " $shown" else ""
+        }
     }
 
     /** All rows in depth-first order (helper for selection restore and tests). */
