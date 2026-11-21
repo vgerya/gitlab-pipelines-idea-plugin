@@ -55,6 +55,7 @@ import java.awt.BorderLayout
 import java.awt.Cursor
 import java.awt.FlowLayout
 import java.awt.event.ActionEvent
+import java.awt.event.HierarchyEvent
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -110,7 +111,7 @@ class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true,
     private var repoUpdatePending = false
 
     /**
-     * 1 s tick while the tool window is visible: repaints live durations of running pipelines and,
+     * 1 s tick, running only while the panel is showing (see [updateTicker]): repaints live durations of running pipelines and,
      * every [REPO_CHECK_TICKS] ticks, re-reads remotes and current branches (cheap: in-memory Git4Idea
      * state or a small `.git/HEAD` read) so that a `git checkout` shows up within a few seconds.
      */
@@ -165,8 +166,25 @@ class PipelinesPanel(private val project: Project) : SimpleToolWindowPanel(true,
         }
         render(snapshot)
         updateRemotes()
-        ticker.start()
+        // tick only while the tool window content is actually showing (hidden / minimized: stopped)
+        addHierarchyListener { e ->
+            if ((e.changeFlags and HierarchyEvent.SHOWING_CHANGED.toLong()) != 0L) updateTicker()
+        }
+        updateTicker()
         PipelinesService.getInstance().ensureStarted()
+    }
+
+    private fun updateTicker() {
+        if (!disposed && isShowing) {
+            if (!ticker.isRunning) {
+                ticker.start()
+                // catch up at once on what changed while hidden (branch checkout, elapsed durations)
+                updateRemotes()
+                table.repaint()
+            }
+        } else {
+            ticker.stop()
+        }
     }
 
     private fun onTick() {

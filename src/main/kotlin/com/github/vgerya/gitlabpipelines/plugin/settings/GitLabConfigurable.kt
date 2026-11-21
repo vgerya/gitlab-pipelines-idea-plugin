@@ -25,6 +25,9 @@ import com.intellij.ui.dsl.builder.COLUMNS_LARGE
 import com.intellij.ui.dsl.builder.MAX_LINE_LENGTH_WORD_WRAP
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.util.ui.JBUI
+import java.awt.Dimension
+import javax.swing.Icon
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.event.DocumentEvent
@@ -49,7 +52,17 @@ class GitLabConfigurable : Configurable {
     private val includeReview = JBCheckBox(MyBundle.message("settings.include.review"))
     private val showDrafts = JBCheckBox(MyBundle.message("settings.showDrafts"))
     private val testButton = JButton(MyBundle.message("settings.test"))
-    private val testResult = JBLabel()
+    /**
+     * Error texts can be long (e.g. a network exception message): the label never asks for more than
+     * [TEST_RESULT_MAX_WIDTH] so that the settings page does not scroll horizontally; the full text is
+     * in the tooltip.
+     */
+    private val testResult = object : JBLabel() {
+        override fun getPreferredSize(): Dimension {
+            val size = super.getPreferredSize()
+            return Dimension(minOf(size.width, JBUI.scale(TEST_RESULT_MAX_WIDTH)), size.height)
+        }
+    }
 
     /** Token as last loaded from / saved to PasswordSafe; `null` until loaded. */
     @Volatile
@@ -174,8 +187,7 @@ class GitLabConfigurable : Configurable {
         includeAssigned.isSelected = s.includeAssigned
         includeReview.isSelected = s.includeReview
         showDrafts.isSelected = s.showDrafts
-        testResult.text = ""
-        testResult.icon = null
+        showTestResult(null, "")
         updateTokenLink()
 
         tokenField.text = ""
@@ -198,8 +210,7 @@ class GitLabConfigurable : Configurable {
     private fun testConnection() {
         val url = urlField.text.trim()
         val token = typedToken()
-        testResult.icon = null
-        testResult.text = MyBundle.message("settings.test.running")
+        showTestResult(null, MyBundle.message("settings.test.running"))
         testButton.isEnabled = false
         ApplicationManager.getApplication().executeOnPooledThread(Runnable {
             val (ok, text) = try {
@@ -213,10 +224,16 @@ class GitLabConfigurable : Configurable {
             ApplicationManager.getApplication().invokeLater({
                 if (disposed) return@invokeLater
                 testButton.isEnabled = true
-                testResult.icon = if (ok) AllIcons.General.InspectionsOK else AllIcons.General.Error
-                testResult.text = text
+                showTestResult(if (ok) AllIcons.General.InspectionsOK else AllIcons.General.Error, text)
             }, ModalityState.any())
         })
+    }
+
+    private fun showTestResult(icon: Icon?, text: String) {
+        testResult.icon = icon
+        testResult.text = text
+        testResult.toolTipText = text.ifEmpty { null }
+        testResult.revalidate()
     }
 
     private fun testErrorText(e: GitLabException): String = when (e.kind) {
@@ -237,5 +254,10 @@ class GitLabConfigurable : Configurable {
 
     override fun disposeUIResources() {
         disposed = true
+    }
+
+    private companion object {
+        /** Unscaled px; fits the narrowest settings dialog next to the "Test Connection" button. */
+        const val TEST_RESULT_MAX_WIDTH = 360
     }
 }
