@@ -8,9 +8,6 @@ unless you keep a browser tab open and refresh it. The plugin watches for you, m
 plugin does: a tool window with your MRs and their pipeline status, a failed-pipeline counter in the
 status bar, and a notification the moment a pipeline fails or passes.
 
-The plugin UI is in Russian. This README gives the English name of each UI element with the actual
-Russian label in parentheses on first mention.
-
 ## Contents
 
 - [Compatibility](#compatibility)
@@ -20,7 +17,7 @@ Russian label in parentheses on first mention.
 - [Tool window](#tool-window)
 - [Settings](#settings)
 - [GitLab integration](#gitlab-integration)
-- [Git integration](#git-integration)
+- [Filter and git integration](#filter-and-git-integration)
 - [Notifications and status bar](#notifications-and-status-bar)
 - [Troubleshooting / FAQ](#troubleshooting--faq)
 - [Development](#development)
@@ -31,18 +28,20 @@ Russian label in parentheses on first mention.
 |---|---|
 | **IDE** | IntelliJ-based IDEs **2024.2 and newer** (the plugin depends only on `com.intellij.modules.platform`; no upper version bound). Checked with IntelliJ Plugin Verifier against IntelliJ IDEA Community 2024.2, WebStorm 2025.2 and IntelliJ IDEA 2025.3. |
 | **GitLab** | gitlab.com and self-hosted GitLab, including non-standard ports and sub-path installs (`https://example.com/gitlab`). Uses the GraphQL API, falling back to REST API v4 when GraphQL is unavailable or returns an error. |
-| **Git** | The bundled Git plugin is an optional dependency (see [Git integration](#git-integration)). |
+| **Git** | The bundled Git plugin is an optional dependency (see [Filter and git integration](#filter-and-git-integration)). |
 | **Network** | Uses the IDE proxy settings and the certificates the IDE trusts (*Settings → Tools → Server Certificates*). |
 
 ## Features
 
 - **GitLab Pipelines** tool window — a tree table of open MRs with pipeline status (icon and label),
-  project, MR number, title, branch, role, last update time and pipeline number.
+  project, MR number, title, branch, role, last update time, pipeline number, and pipeline
+  **start time, duration** (live for running pipelines) and **finish time**.
 - MRs you authored; optionally also MRs assigned to you or awaiting your review. Drafts can be hidden.
 - Sort by any column; choose, reorder and resize columns — all persisted across sessions.
 - Group by project, by branch, or by project and branch.
-- **Current project only** — show only MRs of the projects the open IDE project's git remotes point to.
-- **Show all pipelines** — the last 10 pipelines of each MR as child rows.
+- **Filter**: all MRs, only the current project's MRs (by its git remotes), or only MRs whose source
+  branch is checked out in the current project — follows `git checkout` automatically.
+- **Show All Pipelines** — the last 10 pipelines of each MR as child rows.
 - Status bar widget with a failed-pipeline counter, and notifications when pipelines finish.
 - Poll interval of 30–3600 s (default 60 s) plus a Refresh button.
 - The token is stored in the IDE Password Safe.
@@ -68,53 +67,60 @@ Alternatives: the `plugin-distribution` artifact of a GitHub Actions build, or b
 
 1. Create a GitLab Personal Access Token with the **`read_api`** scope ([how](#personal-access-token)).
 2. Open **Settings → Tools → GitLab MR Pipelines** and enter the GitLab URL and the token.
-3. Click **Test connection** («Проверить соединение») — you should see
-   «Подключено как @login (Name)» ("Connected as …").
+3. Click **Test Connection** — you should see *Connected as @login (Name)*.
 4. Click **OK** and open the **GitLab Pipelines** tool window (right side bar, or
    *View → Tool Windows → GitLab Pipelines*).
 
 ## Tool window
 
 Polling starts as soon as any project is opened, even if the tool window is closed. Above the table
-you see the last update time («Обновлено в 14:05» / «Обновление…» / «Ещё не обновлялось» — "Updated at",
-"Updating…", "Not updated yet") and any error; token errors and "not configured" also get an
-**Open settings** («Открыть настройки») link.
+you see the last update time (*Updated at 14:05* / *Updating…* / *Not updated yet*) and any error; token
+errors and "not configured" also get an **Open settings** link.
 
 ### Toolbar
 
 | Button | Action |
 |---|---|
-| **Refresh** («Обновить») | Poll GitLab now. |
-| **Current project only** («Только текущий проект», toggle) | Filter by the git remotes of the current IDE project. Off by default; remembered per project. |
-| **Grouping** («Группировка») | None («Нет») / By project («По проекту») / By branch («По ветке») / By project and branch («По проекту и ветке»). |
-| **Show all pipelines** («Показывать все пайплайны», toggle) | Recent pipelines of each MR. Off by default. |
-| **Columns** («Колонки») | Checkbox list of columns. The same menu opens on right-click in the table header. |
-| **Settings** («Настройки») | Open *Settings → Tools → GitLab MR Pipelines*. |
+| **Refresh** | Poll GitLab now. |
+| **Filter** (dropdown) | **All Merge Requests** (default) / **Current Project** / **Current Project and Branch** — see [Filter and git integration](#filter-and-git-integration). Saved per IDE project. |
+| **Group By** (dropdown) | **No Grouping** / **By Project** / **By Branch** / **By Project and Branch**. |
+| **Show All Pipelines** (toggle) | Recent pipelines of each MR as child rows. Off by default. |
+| **Columns** (dropdown) | Checkbox list of columns. The same menu opens on right-click in the table header. |
+| **Settings** | Open *Settings → Tools → GitLab MR Pipelines*. |
 
 ### Columns
 
 | Column | MR row | Pipeline row | Default |
 |---|---|---|---|
-| **Status** («Статус») | status icon + label | icon + label + `#iid` | always visible |
-| **Project** («Проект») | project path | — | visible |
+| **Status** | status icon + label | icon + label + `#iid` | always visible |
+| **Project** | project path | — | visible |
 | **MR** | `!123` | — | visible |
-| **Title** («Название») | title + tags `[Черновик]` (draft), `[Ревью]` (review), `[Назначен]` (assigned) | short commit SHA | visible |
-| **Branch** («Ветка») | source branch | pipeline ref | visible |
-| **Role** («Роль») | Author («Автор») / Assignee («Исполнитель») / Reviewer («Ревьюер») | — | hidden |
-| **Updated** («Обновлён») | relative time («только что», «5 мин назад», «3 ч назад», «2 дн назад»), older than a week — `dd.mm.yyyy` | pipeline time | visible |
-| **Pipeline** («Пайплайн») | head pipeline `#iid` | `#iid` | hidden |
+| **Title** | title + tags `[Draft]`, `[Review]`, `[Assigned]` | short commit SHA | visible |
+| **Branch** | source branch | pipeline ref, e.g. `MR !881`, `MR !881 (merged result)`, `MR !881 (merge train)`; full ref in the tooltip | visible |
+| **Role** | Author / Assignee / Reviewer | — | hidden |
+| **Updated** | relative time (*just now*, *5 min ago*, *3 h ago*, *2 d ago*; older than a week — `Nov 21, 2026`) | pipeline time | visible |
+| **Pipeline** | head pipeline `#iid` | `#iid` | hidden |
+| **Started** | head pipeline start, relative time | pipeline start | visible |
+| **Duration** | head pipeline duration, e.g. `45s`, `4m 12s`, `1h 03m`; counts up live while running | pipeline duration | visible |
+| **Finished** | head pipeline finish, relative time | pipeline finish | hidden |
 
-- Status cannot be hidden — it holds the tree nodes (expand arrows).
+- Status cannot be hidden — it is the tree column (expand arrows); its default width is 260 px.
+- Started, Updated and Finished show the absolute date and time in the tooltip.
+- `—` means "not available": the pipeline has not started (or finished) yet. With the REST fallback,
+  recent-pipeline child rows have no start time or duration.
 - Drag column headers to reorder and drag their edges to resize; visibility, order and widths are saved.
+- Upgrading from 1.1 with customised columns: Started and Duration are switched on once; hide them again
+  if you don't need them.
 - The review/assigned tags are not added to MRs you authored.
 
 ### Sorting
 
 - Click a header to sort by that column, click again to reverse; the header shows ▲ / ▼.
-- Default: by status — failed → running → pending → success → other → no pipeline, ties broken by most
+- Default: by status — failed → running → pending → passed → other → no pipeline, ties broken by most
   recently updated first.
-- Empty values (no pipeline, no time) always go last, in either direction.
-- The first click on Updated sorts newest first; other columns start ascending.
+- Time columns sort chronologically and Duration numerically; empty values (no pipeline, `—`) always go
+  last, in either direction.
+- The first click on Updated, Started or Finished sorts newest first; other columns start ascending.
 - The chosen sort is persisted across sessions.
 
 ### Grouping and the tree
@@ -127,7 +133,7 @@ you see the last update time («Обновлено в 14:05» / «Обновле
 
 ### All pipelines
 
-With **Show all pipelines** on, each MR gets child rows — up to 10 recent pipelines, newest first.
+With **Show All Pipelines** on, each MR gets child rows — up to 10 recent pipelines, newest first.
 Additional GitLab requests are made only while the option is on (see [Which APIs are called](#which-apis-are-called)).
 If loading them fails, the previously loaded pipelines stay and the MR list itself updates as usual.
 
@@ -135,26 +141,25 @@ If loading them fails, the previously loaded pipelines stay and the MR list itse
 
 - **Double-click / Enter**: MR row — open the MR in the browser; pipeline row — open the pipeline;
   group row — expand/collapse.
-- **Context menu**: Open MR in browser («Открыть MR в браузере»), Open pipeline («Открыть пайплайн»;
-  disabled when the MR has no pipeline), Copy MR link («Копировать ссылку на MR»). On a pipeline row the
-  MR actions refer to that pipeline's MR.
+- **Context menu**: **Open Merge Request in Browser**, **Open Pipeline in Browser** (disabled when the MR
+  has no pipeline), **Copy Merge Request Link**. On a pipeline row the MR actions refer to that pipeline's MR.
 - **Speed search** — just start typing while the table has focus.
 
 ### Status legend
 
 | Label | GitLab statuses | Icon (AllIcons) |
 |---|---|---|
-| «Упал» (failed) | `failed` | `TestFailed` (red cross) |
-| «Выполняется» / «Отменяется» | `running`, `canceling` | `TestState.Run` |
-| «В очереди» / «Создан» / «Ждёт ресурс» / «Ждёт callback» / «Подготовка» / «Запланирован» | `pending`, `created`, `waiting_for_resource`, `waiting_for_callback`, `preparing`, `scheduled` | `TestNotRan` |
-| «Успешно» (success) | `success` | `TestPassed` (green check) |
-| «Ожидает ручного запуска» (manual) | `manual` | `Actions.Execute` |
-| «Отменён» (canceled) | `canceled` | `TestIgnored` |
-| «Пропущен» (skipped) | `skipped` | `TestSkipped` |
-| «Нет пайплайна» (no pipeline) | — | none |
+| Failed | `failed` | `TestFailed` (red cross) |
+| Running / Canceling | `running`, `canceling` | `TestState.Run` |
+| Pending / Created / Waiting for resource / Waiting for callback / Preparing / Scheduled | `pending`, `created`, `waiting_for_resource`, `waiting_for_callback`, `preparing`, `scheduled` | `TestNotRan` |
+| Passed | `success` | `TestPassed` (green check) |
+| Manual | `manual` | `Actions.Execute` |
+| Canceled | `canceled` | `TestIgnored` |
+| Skipped | `skipped` | `TestSkipped` |
+| No pipeline | — | none |
 | raw GitLab status | unknown status | `TestUnknown` |
 
-Status sort order: failed → running (`running`, `canceling`) → pending → success → other (`manual`,
+Status sort order: failed → running (`running`, `canceling`) → pending → passed (`success`) → other (`manual`,
 `canceled`, `skipped`, unknown) → no pipeline.
 
 ## Settings
@@ -163,30 +168,31 @@ Status sort order: failed → running (`running`, `canceling`) → pending → s
 
 | Setting | Default | Description |
 |---|---|---|
-| GitLab URL («Адрес GitLab») | empty | `http(s)://host[:port][/sub-path]`; a trailing `/` is dropped. |
-| Personal Access Token | — | `read_api` scope. Stored in Password Safe. |
-| Poll interval, s («Интервал опроса») | 60 | 30 to 3600. |
-| Notifications: failed / successful pipelines | on / on | `failed` / `success`. |
-| Notifications: canceled, skipped and manual | off | `canceled`, `skipped`, `manual`. |
-| Show MRs where I'm assignee / reviewer («Показывать MR, где я исполнитель / ревьюер») | off / off | Add MRs assigned to you / awaiting your review. |
-| Show drafts («Показывать черновики») | on | When off, draft MRs are hidden in the table, the widget and notifications. |
+| GitLab URL | empty | `http(s)://host[:port][/sub-path]`; a trailing `/` is dropped. |
+| Personal access token | — | Needs the `read_api` scope. Stored in Password Safe. The **Create token ↗** link below the field opens the token page of the GitLab URL you entered. |
+| Poll interval (seconds) | 60 | 30 to 3600. |
+| Notifications: Failed pipelines / Successful pipelines | on / on | `failed` / `success`. |
+| Notifications: Canceled, skipped and manual pipelines | off | `canceled`, `skipped`, `manual`. |
+| Show merge requests assigned to me / where I am a reviewer | off / off | Add MRs assigned to you / awaiting your review. |
+| Show draft merge requests | on | When off, draft MRs are hidden in the table, the widget and notifications. |
 
 **Where the tool window state is stored:**
 
 - application level, file `gitlabMrPipelinesView.xml`: visible columns, their order and widths, sort,
-  grouping, Show all pipelines;
-- per IDE project, in the workspace file (not shared via VCS): Current project only.
+  grouping, Show All Pipelines;
+- per IDE project, in the workspace file (not shared via VCS): the Filter mode. The 1.1 "Current project
+  only" setting is migrated to **Current Project**.
 
 ## GitLab integration
 
 ### Personal Access Token
 
 1. In GitLab: **avatar → Edit profile → Access tokens**
-   (`https://<your-gitlab>/-/user_settings/personal_access_tokens`; the plugin settings show a link built
-   from the URL you entered). Older GitLab versions may use a different path.
+   (`https://<your-gitlab>/-/user_settings/personal_access_tokens`; the **Create token ↗** link in the
+   plugin settings opens it for the URL you entered). Older GitLab versions may use a different path.
 2. **Add new token**: a name (e.g. `idea-pipelines`), an expiry date, and **only the `read_api` scope**.
    The `api` scope is not needed — the plugin never changes anything in GitLab.
-3. Copy the token (it is shown once), paste it into the settings and click Test connection — the check
+3. Copy the token (it is shown once), paste it into the settings and click Test Connection — the check
    uses the values you entered, even before they are applied.
 
 The plugin sees exactly what your GitLab user sees. 401 means the token is invalid or expired; 403 means
@@ -201,7 +207,7 @@ All requests go only to the configured GitLab URL.
 - `currentUser.authoredMergeRequests(state: opened)` — always;
   `assignedMergeRequests` / `reviewRequestedMergeRequests` — when enabled in settings.
   `headPipeline` for each MR. Pages of 100 MRs, at most 5 pages; an MR found in several lists is shown once.
-- Only with Show all pipelines: `project(fullPath).mergeRequests(iids).pipelines(first: 10)` — one
+- Only with Show All Pipelines: `project(fullPath).mergeRequests(iids).pipelines(first: 10)` — one
   request per project and up to 20 MRs.
 
 **REST API v4** (`PRIVATE-TOKEN`) — the fallback when GraphQL returns `errors[]`, a malformed response,
@@ -209,12 +215,12 @@ a 4xx (other than 401/403/429) or a 5xx:
 
 | Request | Purpose |
 |---|---|
-| `GET /api/v4/user` | current user; also used by Test connection |
+| `GET /api/v4/user` | current user; also used by Test Connection |
 | `GET /api/v4/merge_requests?scope=created_by_me&state=opened&per_page=100` | my MRs |
 | `GET /api/v4/merge_requests?scope=assigned_to_me&state=opened&per_page=100` | assigned to me |
 | `GET /api/v4/merge_requests?scope=all&reviewer_username=<login>&state=opened&per_page=100` | awaiting my review |
 | `GET /api/v4/projects/:id/merge_requests/:iid` | `head_pipeline` of each MR |
-| `GET /api/v4/projects/:path/merge_requests/:iid/pipelines?per_page=10` | only with Show all pipelines |
+| `GET /api/v4/projects/:path/merge_requests/:iid/pipelines?per_page=10` | only with Show All Pipelines |
 
 Per-MR requests run up to 4 in parallel; pagination follows `X-Next-Page`, at most 5 pages.
 401 / 403 / 429 and network errors do not trigger the REST fallback — they are shown right away.
@@ -222,7 +228,7 @@ Per-MR requests run up to 4 in parallel; pagination follows `X-Next-Page`, at mo
 ### Load and rate limits
 
 - One poll per poll interval for the whole IDE, however many projects are open.
-- GraphQL: 1–3 requests per poll (plus the pipeline requests when Show all pipelines is on).
+- GraphQL: 1–3 requests per poll (plus the pipeline requests when Show All Pipelines is on).
   REST: list pages plus one request per MR.
 - On **429 Too Many Requests** polling pauses for `Retry-After` (default 60 s); Refresh still polls
   immediately. If your GitLab has strict limits, increase the poll interval.
@@ -234,18 +240,30 @@ Per-MR requests run up to 4 in parallel; pagination follows `X-Next-Page`, at mo
 - The token is never written to the log or to error messages; the log gets only the error kind and HTTP status.
 - No other hosts are contacted and there is no telemetry.
 
-## Git integration
+## Filter and git integration
 
-Used only by the **Current project only** filter.
+The **Filter** toolbar dropdown has three modes:
 
-**Where remotes come from.**
+| Mode | An MR is shown when… |
+|---|---|
+| **All Merge Requests** | always (default). |
+| **Current Project** | some git remote of the IDE project points to the MR's GitLab project. |
+| **Current Project and Branch** | some repository of the IDE project has a remote for the MR's project **and** has the MR's source branch checked out. A detached HEAD never matches. |
 
-- If the bundled Git plugin (Git4Idea) is enabled — the remotes of all repositories it detected in the project.
-- Otherwise (or if it returned no remotes) the plugin reads `.git/config` itself in the project directory
-  and in the content roots, including worktrees and submodules (a `.git` file with `gitdir:`). Nested
-  repositories in subdirectories are not searched in this mode.
-- `url` and `pushurl` of every `[remote "…"]` section are used. Remotes are recomputed on every refresh
-  while the filter is on.
+- With several repositories in the IDE project (multi-root, submodules), each is checked on its own: the
+  remote and the checked-out branch must belong to the same repository. Branch names are compared exactly.
+- The branch filter follows `git checkout`: the list is updated on Git repository change events (with the
+  bundled Git plugin), re-checked every 4 s while the tool window is visible, and after every poll.
+- The filter mode is saved per IDE project.
+
+**Where remotes and branches come from.**
+
+- If the bundled Git plugin (Git4Idea) is enabled — the repositories it detected in the project, with their
+  remotes and current branch.
+- Otherwise (or if it returned no remotes) the plugin reads `.git/config` and `.git/HEAD` itself in the
+  project directory and in the content roots, including worktrees and submodules (a `.git` file with
+  `gitdir:`). Nested repositories in subdirectories are not searched in this mode.
+- `url` and `pushurl` of every `[remote "…"]` section are used.
 
 **Matching a remote against the configured GitLab URL:**
 
@@ -262,20 +280,24 @@ Used only by the **Current project only** filter.
 - `.git`, a trailing `/` and a login (`user@`) are ignored; project paths are compared case-insensitively.
 - Remotes on other hosts (e.g. GitHub) are ignored.
 
-**Empty list.** If the filter hides every MR, the table shows «Нет MR для проектов из git remote текущего
-проекта» ("No MRs for the projects of the current project's git remotes") or, if there are no matching
-remotes at all, «В текущем проекте нет git remote, указывающих на {host}» ("The current project has no
-git remotes pointing to {host}"), plus a **Show MRs of all projects** («Показать MR всех проектов») link
-that turns the filter off.
+**Empty list.** If the filter hides every MR, the table says why, with a **Show all merge requests** link
+that switches the filter to All Merge Requests:
+
+| Message | Meaning |
+|---|---|
+| *This project has no git remotes pointing to {host}* | No repository of the IDE project has a remote on the configured GitLab. |
+| *No merge requests for the projects of this project's git remotes* | Current Project: none of your open MRs belong to those GitLab projects. |
+| *No branch is checked out in this project (detached HEAD)* | Current Project and Branch: every matching repository is in detached HEAD. |
+| *No merge requests for branch X in this project* | Current Project and Branch: you have no open MR from the checked-out branch X. |
 
 > [!NOTE]
 > If your GitLab serves SSH on a **different host name** (e.g. `ssh.gitlab.company.com` while the web UI
 > is `gitlab.company.com`), those remotes will not match — a separate SSH host is not supported.
-> Use an HTTPS remote or turn the filter off.
+> Use an HTTPS remote or switch the filter to All Merge Requests.
 
 ## Notifications and status bar
 
-The Current project only filter **does not affect** the widget or notifications — they count all MRs.
+The Filter **does not affect** the widget or notifications — they count all MRs.
 
 ### Status bar widget
 
@@ -287,7 +309,7 @@ The Current project only filter **does not affect** the widget or notifications 
 | Invalid token, no permissions or not configured | error icon |
 | No MRs / no data | plugin icon |
 
-Tooltip: «Упало: N, выполняется: N, успешно: N, всего MR: N» (failed, running, succeeded, total MRs).
+Tooltip: *Failed: N, running: N, passed: N, merge requests: N*.
 Click opens the tool window. To hide the widget: right-click the status bar → *GitLab Pipelines*.
 
 ### Notifications
@@ -299,8 +321,8 @@ Click opens the tool window. To hide the widget: right-click the status bar → 
   State is kept in memory only: pipelines that finished while the IDE was closed do not notify.
 - A new MR notifies only if its pipeline finished after the previous poll. No repeats.
 - Intermediate statuses, hidden drafts, merged and closed MRs never notify.
-- Title `group/project !123`, text — the MR title and status; actions **Open pipeline** («Открыть пайплайн»)
-  and **Open MR** («Открыть MR»). Display style: *Settings → Appearance & Behavior → Notifications →
+- Title `group/project !123`, text — the MR title and status; actions **Open pipeline** and
+  **Open merge request**. Display style: *Settings → Appearance & Behavior → Notifications →
   GitLab MR Pipelines*.
 
 ## Troubleshooting / FAQ
@@ -308,29 +330,37 @@ Click opens the tool window. To hide the widget: right-click the status bar → 
 **"Fail to load plugin descriptor" on install.** You installed the source archive. Download
 `gitlab-pipelines-idea-plugin-X.Y.Z.zip` from **Assets**.
 
-**«Неверный или просроченный токен (401)»** (invalid or expired token). Create a new `read_api` token on
+**"Invalid or expired token (401)".** Create a new `read_api` token on
 the GitLab whose URL is in the settings.
 
-**«Недостаточно прав: нужен scope read_api (403)»** (insufficient permissions). Create a token with the
+**"Insufficient permissions: the token needs the read_api scope (403)".** Create a token with the
 `read_api` scope.
 
-**«Не удалось подключиться к GitLab: …»** (cannot connect). Check the URL and the IDE proxy
+**"Cannot connect to GitLab: …".** Check the URL and the IDE proxy
 (*Settings → Appearance & Behavior → System Settings → HTTP Proxy*). If GitLab uses a corporate or
 self-signed certificate, add it in *Settings → Tools → Server Certificates* and click Refresh.
 
-**«Некорректный ответ GitLab»** (malformed response). Often a redirect: the plugin does not follow 3xx.
+**"Unexpected response from GitLab".** Often a redirect: the plugin does not follow 3xx.
 Enter the URL exactly as GitLab opens in the browser after all redirects (`https://`, with the sub-path if any).
 
 **The list is empty.**
 - No open MRs you authored? Assigned / review MRs must be enabled in settings.
 - Show drafts is off and all your MRs are drafts.
-- Current project only is on and the project's remotes don't point to your GitLab — click
-  Show MRs of all projects (see [Git integration](#git-integration)).
+- The Filter is not All Merge Requests — the table then names the reason (no matching remotes, detached
+  HEAD, no MR for the checked-out branch); click **Show all merge requests**
+  (see [Filter and git integration](#filter-and-git-integration)).
 
-**No child rows with Show all pipelines.** Turning the option on triggers a refresh; pipelines appear
+**Current Project and Branch shows nothing after `git checkout`.** The list updates within a few seconds
+while the tool window is visible. Check that the checked-out branch is the MR's *source* branch and that the
+same repository has a remote pointing to the MR's project.
+
+**Started / Duration show `—`.** The pipeline has not started yet (e.g. pending), or — for recent-pipeline
+child rows — GitLab GraphQL was unavailable and the REST fallback does not provide timing.
+
+**No child rows with Show All Pipelines.** Turning the option on triggers a refresh; pipelines appear
 after it. If loading fails, the previous data stays (the IDE log has `Loading recent pipelines failed: …`).
 
-**«Превышен лимит запросов GitLab, повтор через N с»** (rate limit). The plugin waits on its own;
+**"GitLab rate limit exceeded, retrying in N s".** The plugin waits on its own;
 increase the poll interval.
 
 **A notification arrived late.** A delay of up to one poll interval is expected.
@@ -356,12 +386,13 @@ Stack: Kotlin 2.0.21, IntelliJ Platform Gradle Plugin 2.1.0, built against Intel
 ```
 src/main/kotlin/com/github/vgerya/gitlabpipelines/
   core/     plain Kotlin, no IntelliJ: model, GitLab client (GraphQL + REST), status diff,
-            sorting/grouping (MrTree), git remote parsing (GitRemotes)
-  plugin/   IDE integration: settings, polling service, tool window, widget, project remotes
+            sorting/grouping (MrTree), git remote parsing (GitRemotes), branch filter
+            (BranchFilter), pipeline timing and ref display (PipelineTime)
+  plugin/   IDE integration: settings, polling service, tool window, widget, project remotes/branches
 src/main/resources/META-INF/
   plugin.xml                  main descriptor
   gitlab-pipelines-git.xml    loaded only when Git4Idea is enabled (<depends optional="true">)
-src/main/resources/messages/MyBundle.properties   UI strings (Russian)
+src/main/resources/messages/MyBundle.properties   UI strings
 src/test/kotlin/.../core/     core unit tests;  src/test/resources/fixtures/  GraphQL/REST responses
 docs/SPEC.md                  specification
 ```

@@ -28,12 +28,12 @@
     <change-notes><![CDATA[
     <p><b>1.2.0</b></p>
     <ul>
-      <li>The whole UI is now in English.</li>
-      <li>New filter: All merge requests / Current project / Current project and branch (follows <code>git checkout</code>).</li>
-      <li>New Started, Duration and Finished columns.</li>
-      <li>Distinct toolbar icons for Filter, Group By and Columns.</li>
+      <li>The whole UI is now in English; <code>success</code> is shown as &ldquo;Passed&rdquo;.</li>
+      <li>Filter dropdown: All Merge Requests / Current Project / Current Project and Branch (follows <code>git checkout</code>).</li>
+      <li>New Started, Duration (live for running pipelines) and Finished columns.</li>
       <li>Recent pipeline refs shown as &ldquo;MR !881&rdquo; / &ldquo;MR !881 (merged result)&rdquo;.</li>
-      <li>Settings: the token hint no longer widens the page; a &ldquo;Create token&rdquo; link instead of the full URL.</li>
+      <li>Settings: wrapping token hint and a &ldquo;Create token&rdquo; link.</li>
+      <li>Fixed: horizontal scrolling on the settings page; identical Group By and Columns toolbar icons.</li>
     </ul>
     <p><b>1.1.0</b></p>
     <ul>
